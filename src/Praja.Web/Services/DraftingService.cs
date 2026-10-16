@@ -123,7 +123,7 @@ public class DraftingService(IConfiguration config, IHttpClientFactory clients, 
         }
     }
 
-    private static IntakeAnalysis LocalAnalysis(string original, string method) =>
+    public static IntakeAnalysis LocalAnalysis(string original, string method) =>
         new("", "", "", "", "Unknown", CaseRules.SuggestDepartment(original), method, false);
 
     public async Task<CaseBrief> BriefAsync(IReadOnlyList<BriefSource> sources, bool useAi, bool consent, CancellationToken cancellation = default)
@@ -202,7 +202,7 @@ public class DraftingService(IConfiguration config, IHttpClientFactory clients, 
         if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Provider returned an empty result.");
         return JsonDocument.Parse(text);
     }
-    private static DraftResult Template(string original, string language, string district, string location, string method)
+    public static DraftResult Template(string original, string language, string district, string location, string method)
     {
         var route = CaseRules.SuggestDepartment(original);
         var title = route.Department == "review" ? "Grievance requiring routing review" : CaseRules.Departments[route.Department] + " grievance";

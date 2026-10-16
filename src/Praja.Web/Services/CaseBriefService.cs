@@ -16,6 +16,8 @@ public class CaseBriefService(WorkspaceDb db, DraftingService drafts, EvidenceSe
         var item = await db.Grievances.AsNoTracking().Include(g => g.History)
             .SingleOrDefaultAsync(g => g.Id == id && g.OwnerId == owner, cancellation) ?? throw new KeyNotFoundException();
         if (item.Version != version) throw new InvalidOperationException("This case changed. Reload the briefing page before generating it.");
+        if ((useAi || selected.Count > 0) && await db.InboxMessages.AnyAsync(m => m.OwnerId == owner && m.GrievanceId == id && m.CapturedBy == XCollectionService.Actor, cancellation))
+            throw new InvalidOperationException("X-sourced cases currently support local text briefings only. Leave AI and supporting-file processing unselected.");
         if ((useAi || selected.Count > 0) && !consent) throw new InvalidOperationException("Confirm processing permission before using AI or reading selected supporting files.");
         if (selected.Count > 2 || selected.Distinct().Count() != selected.Count)
             throw new InvalidOperationException("Select at most two different supporting files for one briefing.");

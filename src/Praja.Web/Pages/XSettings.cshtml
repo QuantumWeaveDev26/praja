@@ -1,0 +1,30 @@
+@page
+@model XSettingsModel
+@{ ViewData["Title"] = "X public complaint search"; }
+<a href="/Readiness" class="back-link">← Connections</a>
+<div class="page-heading"><div><span class="eyebrow">SOCIAL INTAKE</span><h1>Find public complaints on X.</h1><p>Search recent posts, keep source links and review possible complaints in your intake inbox.</p></div><span class="badge draft">@(Model.LastSuccessUtc.HasValue ? "Search previously succeeded" : Model.Configured ? "Configured · not verified" : "Not configured")</span></div>
+@if(Model.Notice is not null){<div class="notice">@Model.Notice</div>}
+<div asp-validation-summary="All" class="validation"></div>
+<section class="panel form-panel"><h2>1. Save your search settings</h2>
+<p>Paste your X app’s Bearer Token directly here. It is encrypted for this local workspace and account; it is never displayed. Saving does not contact X.</p>
+<form method="post" asp-page-handler="Save" autocomplete="off">
+<input type="hidden" asp-for="Version"/>
+<label for="x-token">Bearer Token</label><input id="x-token" name="Input.BearerToken" type="password" autocomplete="new-password" maxlength="4096"/>
+<p class="field-help">@(Model.Configured ? "Token present. Leave blank to retain it." : "Generate the token in your X Developer Console, under your app’s Keys & Tokens.") Keep it out of chat, screenshots and source code.</p>
+<label asp-for="Input.Query">Public-post search query</label><textarea asp-for="Input.Query" rows="5" maxlength="512" required></textarea>
+<p class="field-help">Use location names and civic issue terms. This searches wording, not verified GPS. It can miss complaints or find unrelated posts. Recent search covers the last seven days; no statewide completeness claim is made.</p>
+<button class="button primary">Save X settings</button></form></section>
+<section class="panel form-panel"><h2>2. Collect one page for review</h2>
+<p>Each search requests at most 10 posts. X may charge for returned posts, including unrelated or previously seen results. No automatic polling, replies, likes, direct messages or image downloads occur.</p>
+<p>Supported matching posts are retained privately in Intake inbox. Local keyword hints help review; originals and source links are preserved. This collection and its intake drafting use local processing, not external AI.</p>
+<p><strong>Last result:</strong> @Model.Status</p>
+@if(Model.LastSuccessUtc is {} success){<p>Last successful request: @success.ToString("dd MMM yyyy HH:mm") UTC. This does not guarantee current token access or credits.</p>}
+@if(Model.Configured){<form method="post"><input type="hidden" asp-for="Version"/>
+<label class="check-row consent"><input asp-for="Permission" required/><span>I authorise this saved query, possible X API charges, and retaining matching public-post text and source links in this private review inbox.</span></label>
+<button class="button primary" asp-page-handler="Run">Search latest posts</button>
+@if(Model.HasNextPage){<button class="button secondary" asp-page-handler="Next">Collect next 10 results</button>}
+</form>}
+<p class="field-help">Next page continues the previous search. Latest search starts again and may return existing posts. Retries reuse saved source IDs. Empty results mean no matches returned, not that Karnataka has no complaints. Expired page tokens require a fresh latest search.</p>
+<a href="/Intake" class="button secondary">Review intake inbox</a></section>
+@if(Model.Configured){<section class="panel form-panel"><h2>Disconnect X</h2><form method="post" asp-page-handler="Disconnect"><input type="hidden" asp-for="Version"/><button class="button secondary">Remove saved token</button></form></section>}
+<section class="panel form-panel"><h2>Coverage and next steps</h2><p>This connector collects text from X’s official recent-search API. It does not connect Facebook or Instagram. Those platforms still have fictional demos only.</p><p>Officers must verify relevance, location and source context before registration. Imported posts are not published to the public complaint map by this collector.</p><a href="https://console.x.com" target="_blank" rel="noopener noreferrer">Open X Developer Console</a></section>

@@ -12,6 +12,9 @@ integration or production acceptance certificate.
   and image/audio connectors. Scanned or mixed petition PDFs use consented provider OCR with complete-page validation and review before registration. Accuracy needs representative evaluation.
 - Gmail Inbox collection, complaint detection and prepared drafts; manual/CSV
   intake and explicitly fictional social demonstrations.
+- On-demand X recent public-post search, encrypted local token settings, bounded
+  pagination and source-preserving inbox review. X intake uses local processing;
+  live access remains unverified until a successful user-triggered request.
 - Gmail plain-text and HTML bodies; HTML becomes plain text without rendering or
   remote-resource loading. Automatic intake supports up to three UTF-8 text/PDF attachments,
   8 MiB aggregate bytes (text: 64 KiB each), 10 pages per PDF, and 6,000 combined characters.
@@ -56,7 +59,8 @@ approved operating policy.
 
 - SMS provider for mobile OTP, account recovery and alerts. Citizen identity-proof
   registration/verification needs a separate approved workflow.
-- X, Facebook and Instagram developer access and supported collection adapters.
+- X token entry, available API credits/access and a live collection test. The X
+  connector is implemented; Facebook and Instagram access/adapters remain pending.
   Social fixtures do not perform live monitoring.
 - Email/SMS notification delivery setup; current notifications are in-app.
 - Government sandbox/API contracts and authoritative department, location and

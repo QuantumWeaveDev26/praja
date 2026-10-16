@@ -252,3 +252,13 @@ match service, issue, district and locality, with links to each case and a count
 complaints created after an earlier closure. Existing period, district, service and
 sample filters apply. These private reports use local records and need no external
 credentials. See `docs/PERFORMANCE_ANALYTICS_TESTING.md` for definitions and limits.
+
+### X public-post collection
+
+Open **Connections → Configure X search** (`/XSettings`) as admin. Save an X app
+bearer token privately, review the query and explicitly collect up to 10 recent
+posts per request. Results enter Intake inbox with original text, source links and
+duplicate protection. Next-page collection is explicit; no background polling is
+enabled. X intake uses local rules/templates. Token configuration does not establish
+live access; API credits/access and a successful request are required. Facebook and
+Instagram remain unconnected. See `docs/X_PUBLIC_SEARCH.md` for setup and limits.

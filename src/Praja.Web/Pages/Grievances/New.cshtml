@@ -5,6 +5,7 @@
 <div class="page-heading"><div><span class="eyebrow">NEW COMPLAINT</span><h1>Capture a complaint.</h1><p class="muted">Type, record or upload. Check the details, then review the draft before registering.</p></div><span class="badge draft">Capture and check · Review next</span></div>
 @if(Model.InboxId.HasValue){<div class="notice vertical"><strong>Source retained in the intake inbox.</strong><p>Original wording is preserved. Review location details here and edit the formal draft on the next screen. <a href="/Intake/Details/@Model.InboxId">Review source and matching complaints</a></p></div>}
 <div class="intake-grid">
+    @if(Model.InboxItem?.CapturedBy == "X public search"){<div class="notice">This X source uses local classification and a source-preserving template. External AI processing is not enabled for this intake.</div>}
     <section class="panel form-panel">
         <form method="post" asp-page="/Grievances/New" asp-page-handler="" id="intake-form" enctype="multipart/form-data" data-busy>
             <div asp-validation-summary="All" class="validation" role="alert"></div>
