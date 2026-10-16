@@ -1,0 +1,17 @@
+@model AnalyticsSnapshot
+@{ var casesById = Model.Rows.ToDictionary(row => row.Id); }
+<section class="panel form-panel"><h2>Department performance</h2>
+<p>Current department responsibility for cases created in the selected period. Drafts are excluded. Transfers are counted under the current department; these are not historical officer rankings.</p>
+@if(Model.PerformanceRows.Count==0){<p>No registered cases match these filters.</p>}else{
+<div class="table-wrap"><table><caption>Backlog, recorded deadlines and closure time</caption><thead><tr><th scope="col">Department</th><th scope="col">Cases</th><th scope="col">Open</th><th scope="col">Closed</th><th scope="col">Awaiting assignment</th><th scope="col">Overdue</th><th scope="col">Awaiting citizen</th><th scope="col">Reopened cases</th><th scope="col">Average close time</th><th scope="col">Oldest open</th></tr></thead><tbody>
+@foreach(var row in Model.PerformanceRows){<tr><th scope="row">@row.Label</th><td>@row.Total</td><td>@row.Open</td><td>@row.Closed</td><td>@row.Unassigned</td><td>@row.Overdue</td><td>@row.AwaitingCitizen</td><td>@row.Reopened</td><td>@(row.AverageClosureHours is double hours?(hours/24).ToString("0.0")+" days":"—")<br/><span class="field-help">@row.TimedClosures usable closures</span></td><td>@(row.OldestOpenDays is double days?days.ToString("0.0")+" days":"—")</td></tr>}
+</tbody></table></div>}
+<p class="field-help">Overdue means an open assigned case with a recorded deadline before now and not before its creation. No deadline is invented. Awaiting assignment counts registered cases without a workflow. Reopened counts cases with a valid recorded reopening, not number of repair rounds. Closure time spans original creation to latest closure, including time before transfers/reopening.</p>
+</section>
+<section class="panel form-panel"><h2>Recurring complaint patterns</h2>
+<p>Two or more non-draft cases with the same service, issue, district and locality in this filtered view. District/locality matching ignores casing and extra spaces. Missing locations and unclassified issues are excluded.</p>
+@if(Model.RecurringRows.Count==0){<p>No recurring groups match these filters. This does not prove issues never recur.</p>}else{
+@foreach(var group in Model.RecurringRows){<article class="import-message"><h3>@(CaseRules.Departments.TryGetValue(group.Department,out var label)?label:group.Department) · @PilotRoutingCatalog.IssueLabel(group.Issue)</h3><p>@group.District · @group.Location</p><p><strong>@group.Count cases</strong> · @group.Open open · @group.Reopened with recorded reopening · @group.AfterClosure created after an earlier case closed</p>
+<details><summary>Review the @group.Count cases</summary><ul>@foreach(var id in group.CaseIds){var item=casesById[id];<li><a href="/Grievances/Details/@id">@item.Reference</a> · @CaseRules.StatusLabel(item.Status) · @item.CreatedUtc.ToString("dd MMM yyyy") UTC</li>}</ul></details></article>}}
+<p class="field-help">These are patterns to investigate, not confirmed duplicates or proof of failed repairs. “After closure” uses usable closure timestamps within this filtered set only. Different locality spellings and cases outside the period can hide recurrence. Linked duplicate inbox messages are not counted as additional cases. CSV remains a case-row export; these summary tables are not included.</p>
+</section>

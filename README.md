@@ -243,3 +243,12 @@ Automation lists the latest 50 references to emails not detected as complaints. 
 ### Duplicate complaint review
 
 Intake inbox now shows exact and similar-wording candidate matches. Officers can link a confirmed duplicate to a registered case or keep it separate with a recorded reason. Original messages remain intact; linked reports appear on case details and under the Duplicate inbox filter. Automation and case pages show related-record hints. No automatic merging or citizen access sharing occurs. Matching is local, bounded and heuristic; see `docs/DUPLICATE_REVIEW_TESTING.md` for workflow, limits and validation.
+
+### Department performance and recurring complaints
+
+Open **Analytics** to compare current department backlog, assignment gaps, overdue
+work, citizen confirmation and recorded closure times. Recurring complaint groups
+match service, issue, district and locality, with links to each case and a count of
+complaints created after an earlier closure. Existing period, district, service and
+sample filters apply. These private reports use local records and need no external
+credentials. See `docs/PERFORMANCE_ANALYTICS_TESTING.md` for definitions and limits.

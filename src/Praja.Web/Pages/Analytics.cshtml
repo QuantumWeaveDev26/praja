@@ -33,6 +33,7 @@
     }
     else
     {
+        <partial name="_PerformanceAnalytics" model="report" />
         <div class="analytics-group-grid">
             @foreach (var grouping in new[] { (Title: "By service", Groups: report.Departments), (Title: "By district", Groups: report.Districts), (Title: "By intake channel", Groups: report.Sources) })
             {

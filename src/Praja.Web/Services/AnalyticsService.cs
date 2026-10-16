@@ -14,9 +14,13 @@ public record AnalyticsSnapshot(IReadOnlyList<Grievance> Rows, int Volume, int O
     double? AverageResolutionHours, int TimedClosures, int SampleCount,
     IReadOnlyList<AnalyticsGroup> Departments, IReadOnlyList<AnalyticsGroup> Districts,
     IReadOnlyList<AnalyticsGroup> Sources, IReadOnlyList<AnalyticsDay> DailyTrend,
-    int FlaggedClosureCases, int ClosureFlagCount, IReadOnlyList<AnalyticsFlag> ClosureFlags);
+    int FlaggedClosureCases, int ClosureFlagCount, IReadOnlyList<AnalyticsFlag> ClosureFlags)
+{
+    public IReadOnlyList<DepartmentPerformance> PerformanceRows {get;init;}=[];
+    public IReadOnlyList<RecurringComplaint> RecurringRows {get;init;}=[];
+}
 
-public class AnalyticsService(WorkspaceDb db)
+public partial class AnalyticsService(WorkspaceDb db)
 {
     public async Task<AnalyticsSnapshot> LoadAsync(Guid owner, AnalyticsFilter filter, DateTime nowUtc, CancellationToken cancellation = default)
     {
@@ -28,7 +32,9 @@ public class AnalyticsService(WorkspaceDb db)
         if (filter.District is not null) query = query.Where(g => g.District == filter.District);
         if (filter.Department is not null) query = query.Where(g => g.Department == filter.Department);
         var records = await query.ToListAsync(cancellation);
-        return Summarize(records, filter, nowUtc);
+        var report=Summarize(records, filter, nowUtc);
+        var workflows=await db.CaseWorkflows.AsNoTracking().Where(w=>query.Any(g=>g.Id==w.Id)).ToListAsync(cancellation);
+        return report with {PerformanceRows=Performance(report,workflows,nowUtc),RecurringRows=Recurrences(report,workflows,nowUtc)};
     }
 
     public async Task<string[]> DistrictOptionsAsync(Guid owner, bool includeSamples, CancellationToken cancellation = default)

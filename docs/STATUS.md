@@ -22,6 +22,9 @@ integration or production acceptance certificate.
   recheck permission, mailbox-scoped retry, dismissal and duplicate protection.
 - Local exact/similar wording duplicate suggestions, officer-reviewed linking of incoming
   reports to existing cases, keep-separate decisions, case audit and preserved sources.
+- Private department performance and recurring complaint analytics: backlog, unassigned
+  and overdue cases, citizen confirmation, recorded reopening and closure times;
+  matching service/issue/locality groups with case links and after-closure counts.
 - Admin, intake, department, reviewer and contractor roles with scoped dashboards;
   account management, reassignment, cross-department transfer and mandatory
   first-login password changes.
@@ -41,7 +44,7 @@ integration or production acceptance certificate.
    but keyword detection accuracy still needs a labelled representative dataset.
 2. Real-device offline media, microphone and storage eviction testing across target phones.
 3. Representative multilingual/media OCR evaluation and live scanned-email OCR accuracy evaluation.
-4. Recurrence/department-performance analytics and representative duplicate/paraphrase accuracy evaluation.
+4. Representative duplicate/paraphrase accuracy evaluation and recurrence locality-normalisation evaluation.
 5. Backup/restore drills, retention controls, accessibility, real-device testing,
    load/failure testing and security review.
 
