@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace Praja.Web.Services;
 
 public record IntakeText(string Text, string Method);
-public class MediaIntakeService(IConfiguration config, IHttpClientFactory clients, AiConfigurationStore? settings = null)
+public partial class MediaIntakeService(IConfiguration config, IHttpClientFactory clients, AiConfigurationStore? settings = null)
 {
     private AiConfiguration Settings => settings?.Read() ?? AiConfiguration.From(config);
     public bool OcrConfigured => Settings.DraftingConfigured;
@@ -22,7 +22,9 @@ public class MediaIntakeService(IConfiguration config, IHttpClientFactory client
         if (extension == ".pdf")
         {
             if (!bytes.AsSpan().StartsWith("%PDF-"u8)) throw new InvalidOperationException("The file is not a recognised PDF.");
-            return new(ValidateText(await PdfIntakeWorker.ExtractAsync(bytes, cancellation)), "Local PDF text extraction · review required");
+            var inspection = await PdfIntakeWorker.InspectAsync(bytes, cancellation);
+            if (inspection.RequiresOcr) return await ReadScannedPdfAsync(bytes, inspection.PageCount, cancellation);
+            return new(ValidateText(inspection.Text), "Local PDF text extraction · review required");
         }
         var mime = extension switch
         {

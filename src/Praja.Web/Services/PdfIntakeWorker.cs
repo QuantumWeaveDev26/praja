@@ -7,10 +7,14 @@ using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 
 namespace Praja.Web.Services;
 
+public sealed record PdfInspection(string Text, int PageCount, bool RequiresOcr);
+
 // Parse untrusted PDFs in a separate process with an elapsed-time and memory watchdog.
 // The worker consumes bytes over stdin; it never opens caller-supplied paths or runs embedded PDF actions.
 public static class PdfIntakeWorker
 {
+    private const int MaximumInputBytes = 8 * 1024 * 1024;
+
     public static async Task RunAsync()
     {
         try
@@ -18,21 +22,37 @@ public static class PdfIntakeWorker
             var encoded = await Console.In.ReadLineAsync() ?? "";
             if (encoded.Length > 12 * 1024 * 1024) throw new InvalidOperationException();
             var bytes = Convert.FromBase64String(encoded);
+            if (bytes.Length > MaximumInputBytes) { Console.WriteLine(JsonSerializer.Serialize(new { error = "Use a PDF no larger than 8 MiB." })); return; }
             using var document = PdfDocument.Open(bytes);
+            if (document.IsEncrypted) { Console.WriteLine(JsonSerializer.Serialize(new { error = "Use an unencrypted PDF for petition processing." })); return; }
             if (document.NumberOfPages > 10) { Console.WriteLine(JsonSerializer.Serialize(new { error = "Use a petition of at most 10 pages." })); return; }
             var text = new StringBuilder();
+            var requiresOcr = false;
             foreach (var page in document.GetPages())
             {
-                text.AppendLine(ContentOrderTextExtractor.GetText(page));
+                var pageText = ContentOrderTextExtractor.GetText(page);
+                // A text layer on one page must not hide scanned content on another.
+                requiresOcr |= page.NumberOfImages > 0 || string.IsNullOrWhiteSpace(pageText);
+                text.AppendLine(pageText);
                 if (text.Length > 6000) { Console.WriteLine(JsonSerializer.Serialize(new { error = "This petition exceeds 6,000 characters. Enter a reviewed excerpt manually." })); return; }
             }
-            Console.WriteLine(JsonSerializer.Serialize(new { text = text.ToString() }));
+            Console.WriteLine(JsonSerializer.Serialize(new { text = text.ToString(), pageCount = document.NumberOfPages, requiresOcr }));
         }
         catch (Exception) { Console.WriteLine(JsonSerializer.Serialize(new { error = "The PDF could not be read. Use an unencrypted text PDF or enter the complaint manually." })); }
     }
 
     public static async Task<string> ExtractAsync(byte[] bytes, CancellationToken cancellation)
     {
+        var inspection = await InspectAsync(bytes, cancellation);
+        if (inspection.RequiresOcr)
+            throw new InvalidOperationException("PDF contains scanned/image pages; use petition upload with OCR; no partial text extracted.");
+        return inspection.Text;
+    }
+
+    public static async Task<PdfInspection> InspectAsync(byte[] bytes, CancellationToken cancellation)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        if (bytes.Length > MaximumInputBytes) throw new InvalidOperationException("Use a PDF no larger than 8 MiB.");
         var host = Path.GetFullPath(Path.Combine(RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", "..", OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet"));
         var start = new ProcessStartInfo(host) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true };
         start.ArgumentList.Add(typeof(PdfIntakeWorker).Assembly.Location);
@@ -52,7 +72,10 @@ public static class PdfIntakeWorker
             if (process.ExitCode != 0) throw new InvalidOperationException("PDF extraction failed. Try a smaller text PDF.");
             using var result = JsonDocument.Parse(json);
             if (result.RootElement.TryGetProperty("error", out var error)) throw new InvalidOperationException(error.GetString());
-            return result.RootElement.GetProperty("text").GetString() ?? "";
+            return new PdfInspection(
+                result.RootElement.GetProperty("text").GetString() ?? "",
+                result.RootElement.GetProperty("pageCount").GetInt32(),
+                result.RootElement.GetProperty("requiresOcr").GetBoolean());
         }
         catch (Exception ex) when (ex is OperationCanceledException or JsonException or IOException)
         {

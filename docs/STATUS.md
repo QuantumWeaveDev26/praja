@@ -9,7 +9,7 @@ integration or production acceptance certificate.
   capture; private tracking codes and citizen approval or dispute.
 - Offline text, incident photo and voice capture with bounded device storage, later synchronisation and duplicate protection. Voice is transcribed after reconnecting and requires citizen review before registration.
 - AI-assisted extraction and drafting, local routing fallback, PDF text extraction
-  and image/audio connectors. Accuracy needs representative evaluation.
+  and image/audio connectors. Scanned or mixed petition PDFs use consented provider OCR with complete-page validation and review before registration. Accuracy needs representative evaluation.
 - Gmail Inbox collection, complaint detection and prepared drafts; manual/CSV
   intake and explicitly fictional social demonstrations.
 - Gmail plain-text and HTML bodies; HTML becomes plain text without rendering or
@@ -35,7 +35,7 @@ integration or production acceptance certificate.
 1. Representative complaint-detection evaluation and clearer handling of uncertain
    or missed intake messages.
 2. Real-device offline media, microphone and storage eviction testing across target phones.
-3. Scanned-PDF processing and multilingual/media evaluation tooling and fixtures.
+3. Representative multilingual/media OCR evaluation and explicit scanned-email attachment processing.
 4. Recurrence/department-performance analytics and duplicate/paraphrase review.
 5. Backup/restore drills, retention controls, accessibility, real-device testing,
    load/failure testing and security review.

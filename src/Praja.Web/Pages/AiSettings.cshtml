@@ -9,7 +9,7 @@
     <form method="post" asp-page="/AiSettings" asp-page-handler="Save" autocomplete="off">
         <div asp-validation-summary="All" class="validation" role="alert"></div>
         <div class="field"><label asp-for="Input.ApiKey">API key</label><input asp-for="Input.ApiKey" type="password" maxlength="500" autocomplete="new-password" spellcheck="false" /><p class="field-help">Leave blank to retain the current key. Stored encrypted for this local workspace.</p></div>
-        <div class="field"><label asp-for="Input.Model">Drafting and image OCR model</label><input asp-for="Input.Model" maxlength="100" required spellcheck="false" /><p class="field-help">Use a model available to your API project that supports chat, JSON output and image input. Defaults to gpt-4o-mini.</p></div>
+        <div class="field"><label asp-for="Input.Model">Drafting and image/PDF OCR model</label><input asp-for="Input.Model" maxlength="100" required spellcheck="false" /><p class="field-help">Use a model available to your API project that supports chat, JSON output, image input and PDF file input. Defaults to gpt-4o-mini.</p></div>
         <label class="check-row"><input asp-for="Input.EnableSpeech" /> Enable speech transcription</label>
         <div class="field"><label asp-for="Input.SpeechModel">Speech model</label><input asp-for="Input.SpeechModel" maxlength="100" spellcheck="false" /><p class="field-help">Defaults to gpt-4o-mini-transcribe. Review Kannada transcripts against the original recording.</p></div>
         <div class="form-actions"><span class="field-help">Requests use OpenAI’s official HTTPS endpoints.</span><button class="button primary">Save configuration →</button></div>

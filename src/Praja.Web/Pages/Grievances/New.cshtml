@@ -10,7 +10,7 @@
             <div asp-validation-summary="All" class="validation" role="alert"></div>
             <input asp-for="AnalysisToken" type="hidden" />
             <input asp-for="InboxId" type="hidden"/><input asp-for="InboxVersion" type="hidden"/>@if(Model.InboxId.HasValue){<input asp-for="Input.Source" type="hidden"/>}
-            <label class="check-row consent"><input asp-for="Input.Consent" required /><span>I confirm that the citizen agreed to record and process this complaint. I will review suggestions and the draft before registration.</span></label>
+            <label class="check-row consent"><input asp-for="Input.Consent" required /><span>I confirm that the citizen agreed to record and process this complaint, including sending image/scanned PDFs, images or audio to the configured service when used. I will check extracted text, suggestions and the draft before registration.</span></label>
             @if(Model.InboxId is null)
             {
                 <fieldset class="capture-choice"><legend>1. How do you want to capture the complaint?</legend><div class="capture-options">
