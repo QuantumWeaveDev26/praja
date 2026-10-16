@@ -1,0 +1,19 @@
+@page "{id:guid}"
+@model Praja.Web.Pages.Grievances.BriefModel
+@{ ViewData["Title"] = "Case briefing"; }
+<a class="back-link" href="/Grievances/Details/@Model.Case.Id">← Back to case</a>
+<div class="page-heading"><div><span class="eyebrow">@Model.Case.Reference · OFFICER BRIEFING</span><h1>Review the case at a glance.</h1><p class="muted">Read selected source excerpts, then check the original records before deciding.</p></div><span class="badge draft">@CaseRules.StatusLabel(Model.Case.Status)</span></div>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+@if (Model.Snapshot is { } snapshot)
+{
+    <section class="panel form-panel case-brief-result" aria-label="Case briefing result"><span class="eyebrow">BRIEFING · VERSION @snapshot.Case.Version</span><h2>@snapshot.Brief.Method</h2><p class="muted">Selected excerpts may omit context. The recorded report and feedback still require officer review.</p><div class="notice vertical"><strong>Recorded citizen feedback: @(snapshot.Case.CitizenFeedback switch { "Disagreed" => "Citizen says the issue remains unresolved", "Confirmed" => "Citizen confirmed resolution", "Pending" => "Awaiting citizen confirmation", _ => snapshot.Case.CitizenFeedback })</strong><p>Recorded by an officer. This is always displayed separately from selected excerpts. <a class="text-link" href="#brief-source-feedback">Check the recorded source</a></p></div><ol class="brief-points">@foreach(var point in snapshot.Brief.Points) { var source = snapshot.Sources.Single(s => s.Id == point.SourceId); <li><a class="text-link" href="#brief-source-@point.SourceId">@source.Label</a><blockquote>@point.Quote</blockquote></li> }</ol>
+    <ul class="plain-list">@foreach(var note in snapshot.Notes) { <li>@note</li> }</ul><p class="field-help">Generated for this page only. Case wording, status, evidence and history were not changed.</p></section>
+    <section class="panel form-panel"><h2>Sources considered</h2><p class="muted">Expand a source to compare its complete text with the selected quote.</p>@foreach(var source in snapshot.Sources) { <details class="brief-source" id="brief-source-@source.Id"><summary>@source.Label</summary><blockquote>@source.Text</blockquote></details> }</section>
+}
+<section class="panel form-panel"><h2>Prepare an officer briefing</h2><p class="muted">Original complaint, recorded resolution, feedback and latest 30 activity entries. Supporting documents are included only when selected.</p><form method="post" data-busy><input asp-for="Version" type="hidden"/>
+    @if (Model.Files.Count > 0) { <fieldset class="brief-files"><legend>Supporting files · Select up to two</legend>@foreach(var file in Model.Files) { <label class="check-row"><input type="checkbox" name="SelectedEvidence" value="@file.Id" checked="@Model.SelectedEvidence.Contains(file.Id)"/><span>@file.FileName <span class="field-help">@file.Description</span></span></label> }</fieldset> }
+    <label class="check-row"><input asp-for="UseAi"/><span>Use AI to select the key source excerpts <span class="field-help">@(Model.AiConnected ? "OpenAI is configured." : "AI is not connected; local excerpts remain available.")</span></span></label>
+    <label class="check-row consent"><input asp-for="ProcessingConsent"/><span>I have permission to process this case and selected files. If AI is selected, complaint, resolution, feedback, recent activity and selected document text are sent to configured OpenAI. Selected images also use its OCR service.</span></label>
+    <p class="field-help">Without AI, excerpts and text-PDF extraction stay local. Selected images need AI OCR or manual reading. Files keep their existing integrity and privacy checks. Unreadable files are labelled as excluded.</p>
+    <button class="button primary">Generate briefing</button></form></section>
+<script src="/js/brief-sources.js" asp-append-version="true" defer></script>

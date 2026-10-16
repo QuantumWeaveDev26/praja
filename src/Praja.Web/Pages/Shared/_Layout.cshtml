@@ -1,0 +1,71 @@
+@inject WorkflowService WorkflowAccess
+@inject NotificationService Notifications
+@{
+    var path = Context.Request.Path.Value ?? "/";
+    var isCitizenPage = new[]{"/Submit","/Citizen","/Track","/Transparency","/CitizenLogin","/PublicMap","/PublicHistory","/Community"}.Contains(path.TrimEnd('/'), StringComparer.OrdinalIgnoreCase);
+    var isSignedIn = User.Identity?.IsAuthenticated == true;
+    var officerRole = isSignedIn ? (await WorkflowAccess.RoleAsync(User.OwnerId())).Role : "";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Praja grievance pilot workspace: capture, review, route and assess complaint resolution." />
+    <title>@ViewData["Title"] · Praja</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="/css/analytics.css" asp-append-version="true" />
+    <script src="/js/location-capture.js" asp-append-version="true" defer></script>
+    <script src="/js/site.js" asp-append-version="true" defer></script>
+    <script src="/js/citizen-location.js" asp-append-version="true" defer></script>
+    <script src="/js/citizen-help.js" asp-append-version="true" defer></script>
+    <script src="/js/voice.js" asp-append-version="true" defer></script>
+    <script src="/js/capture-method.js" asp-append-version="true" defer></script>
+    <script src="/js/follow-up.js" asp-append-version="true" defer></script>
+    <script src="/js/routing-choices.js" asp-append-version="true" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+@if (isSignedIn && !isCitizenPage)
+{
+    <aside class="sidebar">
+        <a class="brand" href="/"><span class="brand-mark">p<span>·</span></span><span>praja<small>GRIEVANCE WORKSPACE</small></span></a>
+        <div class="sidebar-caption">WORKSPACE</div>
+        <nav aria-label="Main navigation">
+            <a href="/Work/Notifications" class="nav-link @(path=="/Work/Notifications"?"active":"")">Notifications (@(await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(Notifications.ForOfficer(User.OwnerId()).Where(n=>n.ReadUtc==null))))</a>
+            <a href="/Work" class="nav-link @(path.StartsWith("/Work") && path!="/Work/Notifications" ? "active" : "")"><span class="nav-icon">▤</span> My dashboard</a>
+            @if(officerRole is "Admin" or "Intake"){
+            <a href="/Automation" class="nav-link @(path.StartsWith("/Automation") ? "active" : "")"><span class="nav-icon">↻</span> Automation</a>
+            <a href="/Intake" class="nav-link @(path.StartsWith("/Intake") ? "active" : "")"><span class="nav-icon">▧</span> Intake inbox</a>
+            <a href="/" class="nav-link @(path == "/" ? "active" : "")"><span class="nav-icon">▦</span> Overview</a>
+            <a href="/Grievances/New" class="nav-link @(path == "/Grievances/New" ? "active" : "")"><span class="nav-icon">＋</span> New complaint</a>
+            <a href="/Grievances" class="nav-link @(path.StartsWith("/Grievances") && path != "/Grievances/New" ? "active" : "")"><span class="nav-icon">▤</span> Casework</a>
+            <a href="/Analytics" class="nav-link @(path == "/Analytics" ? "active" : "")"><span class="nav-icon">▥</span> Analytics</a>
+            <a href="/Citizen" class="nav-link @(path == "/Citizen" ? "active" : "")"><span class="nav-icon">◎</span> Citizen assistance</a>
+            <a href="/Readiness" class="nav-link @(path is "/Readiness" or "/AiSettings" or "/GmailSettings" ? "active" : "")"><span class="nav-icon">◇</span> Connections</a>
+            }
+            <a href="/Submit" class="nav-link">Citizen portal</a>
+            <a href="/Transparency" class="nav-link">Public progress</a>
+            <a href="/PublicMap" class="nav-link">Public complaint map</a>
+        </nav>
+        <div class="profile"><span class="avatar">@((User.Identity?.Name ?? "O")[..1].ToUpperInvariant())</span><div><strong>@User.Identity?.Name</strong><span>@officerRole</span></div><form method="post" asp-page="/Account/Logout"><button class="signout" aria-label="Sign out" title="Sign out">Sign out</button></form></div>
+    </aside>
+    <div class="app-shell">
+        <header class="topbar"><span>Praja <span class="divider">/</span> Karnataka grievance demo</span><div><span class="environment"><span class="dot"></span> Demo workspace</span><a href="/Readiness" class="topbar-link">Government connection: future stage</a></div></header>
+        <main id="main" class="main-content">@RenderBody()</main>
+        <footer class="app-footer"><span>Praja · Citizen voice to reviewed resolution</span><span>Independent prototype · No government submissions</span></footer>
+    </div>
+}
+else if (isCitizenPage)
+{
+    <header class="citizen-header"><a class="brand" href="/Submit"><span class="brand-mark">p<span>·</span></span><span>praja<small>CITIZEN PORTAL</small></span></a><span class="environment">Local pilot · Not connected to IPGRS</span><a class="text-link" href="/Account/Login">Officer sign in →</a></header>
+    <main id="main" class="citizen-shell">@RenderBody()</main>
+    <footer class="app-footer"><span>Citizen guidance and local case status</span><span>Independent prototype · No government submissions</span></footer>
+}
+else
+{
+    <main id="main" class="auth-shell">@RenderBody()</main>
+}
+</body>
+</html>

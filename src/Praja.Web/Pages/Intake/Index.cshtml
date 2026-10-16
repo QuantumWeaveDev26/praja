@@ -1,0 +1,11 @@
+@page
+@model Praja.Web.Pages.Intake.IndexModel
+@{ViewData["Title"]="Intake inbox";}
+<div class="page-heading"><div><span class="eyebrow">REVIEW BEFORE CASEWORK</span><h1>Every channel, one inbox.</h1><p class="muted">Preserved source messages from automatic collection and manual capture.</p></div><div class="intake-actions"><a class="button primary" href="/Automation">Automation queue</a><a class="button secondary" href="/Intake/Import">Import messages</a><a class="button secondary" href="/Intake/New">Capture a message →</a></div></div>
+<div class="notice vertical"><strong>Let automatic intake prepare the complaint.</strong><p>Enable Gmail Inbox collection in Automation. Likely complaints are retained, details extracted and drafts prepared for one officer review. Manual capture and CSV import remain available. Live social-platform collection is not connected; a clearly marked social-feed demo is available in Automation.</p></div>
+<p class="demo-explainer"><a class="text-link" href="/Automation">Open automatic intake</a> · <a class="text-link" href="/GmailSettings">Gmail connection and manual label preview</a></p>
+<form method="get" class="filters"><div><label asp-for="State">Review state</label><select asp-for="State"><option>Pending</option><option>Converted</option><option>Dismissed</option></select></div><button class="button secondary">Filter inbox</button></form>
+<section class="panel"><div class="panel-heading"><h2>@Model.State messages</h2><span class="small muted">Latest 200 · Received times in UTC</span></div>
+@if(Model.Items.Count==0){<div class="empty-state"><h3>No messages in this view.</h3><p>Capture an authorised message to start reviewing it.</p></div>}
+else{<div class="table-wrap"><table><thead><tr><th>Channel</th><th>Original message</th><th>Received UTC</th><th>Review</th></tr></thead><tbody>@foreach(var item in Model.Items){<tr><td>@item.Channel</td><td>@(item.OriginalText.Length>180?item.OriginalText[..180]+"…":item.OriginalText)</td><td>@item.ReceivedUtc.ToString("dd MMM yyyy, HH:mm")</td><td><a class="text-link" href="/Intake/Details/@item.Id">Open message →</a></td></tr>}</tbody></table></div>}
+</section>

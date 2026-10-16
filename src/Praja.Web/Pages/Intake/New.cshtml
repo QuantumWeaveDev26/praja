@@ -1,0 +1,10 @@
+@page
+@model Praja.Web.Pages.Intake.NewModel
+@{ViewData["Title"]="Capture incoming message";}
+<a href="/Intake" class="back-link">← Intake inbox</a><div class="page-heading"><div><span class="eyebrow">PRESERVE THE SOURCE</span><h1>Capture an incoming concern.</h1><p class="muted">Retain the exact wording and its source. Review comes before drafting or registration.</p></div></div>
+<section class="panel form-panel"><form method="post" data-busy><div asp-validation-summary="All" class="validation" role="alert"></div><div class="form-grid"><div><label asp-for="Input.Channel">Source channel</label><select asp-for="Input.Channel">@foreach(var channel in InboxService.Channels){<option>@channel</option>}</select></div><div><label asp-for="Input.Language">Message language</label><select asp-for="Input.Language"><option>English</option><option>Kannada</option></select></div></div>
+<label asp-for="Input.OriginalText">Original incoming message</label><textarea asp-for="Input.OriginalText" rows="8" required minlength="20" maxlength="6000"></textarea><p class="field-help">Paste authorised text or a reviewed transcript. Original wording is preserved after capture. Document and voice extraction remain available on Register a grievance.</p>
+<label asp-for="Input.SourceUrl">Source link · optional</label><input asp-for="Input.SourceUrl" type="url" maxlength="1000" placeholder="https://platform.example/post/..."/><p class="field-help">An HTTPS reference only. Praja does not fetch this link or post a response.</p>
+<label asp-for="Input.ExternalId">Source message ID · optional</label><input asp-for="Input.ExternalId" maxlength="150"/><p class="field-help">Reuse the same ID only for the same message on this channel. Retry capture keeps the first retained item.</p>
+<label class="check-row consent"><input asp-for="Input.Permission" required/><span>I confirm permission to retain this message and source details in the local workspace.</span></label>
+<div class="form-actions"><span class="small muted">No AI processing or registration at this step.</span><button class="button primary">Save for review →</button></div></form></section>

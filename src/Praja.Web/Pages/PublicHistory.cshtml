@@ -1,0 +1,33 @@
+@page
+@model Praja.Web.Pages.PublicHistoryModel
+@{ ViewData["Title"] = "Public complaint progress"; var history = Model.History; }
+<span class="eyebrow">PUBLIC PROGRESS</span>
+<h1>Follow the work.</h1>
+<p><a href="/PublicMap">Back to nearby complaints</a> · <a href="/Track">Track my private complaint</a></p>
+<section class="panel form-panel">
+    <h2>@history.Reference</h2>
+    <p>Current department: <strong>@history.DepartmentLabel</strong></p>
+    <p>Current progress: <strong>@history.StageLabel</strong></p>
+    @if (history.DueUtc is {} due) { <p>Current target date: @due.ToString("dd MMM yyyy") (UTC)</p> }
+    <p>This history shows recorded stage changes, not independent proof of completion. Personal details, staff notes and evidence photos remain private.</p>
+    @if (history.Stage is "CitizenConfirmation" or "Closed")
+    {
+        <a class="button" asp-page="/Community" asp-route-reference="@history.Reference">Check completed work</a>
+    }
+</section>
+<section class="panel form-panel">
+    <h2>Progress history</h2>
+    <p>Dates and times are UTC. Returning to work in progress means further work was requested. Consecutive updates within the same stage are grouped.</p>
+    <p>Complaint record created: @history.CreatedUtc.ToString("dd MMM yyyy HH:mm") UTC.</p>
+    @if (history.Truncated) { <p class="notice">Showing stage changes from the latest 200 recorded updates. Earlier updates remain in the private case history.</p> }
+    @if (history.Events.Count == 0) { <p>No workflow stage changes recorded yet.</p> }
+    else
+    {
+        <ol>
+        @foreach (var entry in history.Events)
+        {
+            <li><p><strong>@entry.StageLabel</strong><br /><time datetime="@entry.AtUtc.ToString("yyyy-MM-ddTHH:mm:ssZ")">@entry.AtUtc.ToString("dd MMM yyyy HH:mm") UTC</time></p></li>
+        }
+        </ol>
+    }
+</section>

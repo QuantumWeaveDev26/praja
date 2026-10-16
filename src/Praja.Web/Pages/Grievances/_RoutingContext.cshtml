@@ -1,0 +1,8 @@
+@model Praja.Web.Pages.Grievances.DetailsModel
+<section class="panel routing-context" aria-label="Routing context">
+    <span class="eyebrow">DEMO ROUTING · OFFICER REVIEW</span><h2>@(Model.Case.Status=="Draft"?"Check the suggested classification.":"Classification recorded by the officer.")</h2>
+    <dl class="record-details"><dt>Service</dt><dd>@CaseRules.Departments[Model.Case.Department]</dd><dt>Demo category</dt><dd>@PilotRoutingCatalog.CategoryLabel(Model.Case.CategoryCode)</dd><dt>Demo issue</dt><dd>@PilotRoutingCatalog.IssueLabel(Model.Case.SubcategoryCode)</dd><dt>Initial routing method</dt><dd>@(Model.Case.RoutingMethod.Length==0?"Not recorded for this earlier case":Model.Case.RoutingMethod)</dd></dl>
+    @if(Model.Case.Department=="review"){<p class="notice">No single service selected. Review the original and choose a service before registration.</p>}
+    @if(Model.Case.RoutingEvidence.Length>0){<p class="field-help">Source excerpt used for the initial suggestion</p><blockquote class="routing-quote">@Model.Case.RoutingEvidence</blockquote>}
+    <p class="field-help">@Model.Case.RoutingReason Review the original statement before confirming the route.</p>
+</section>

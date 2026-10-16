@@ -1,0 +1,26 @@
+@model Praja.Web.Pages.Grievances.NewModel
+@{
+    var suggested = Model.Analysis;
+    var hasAnswers = !string.IsNullOrWhiteSpace(Model.Input.FollowUpTimeline) || !string.IsNullOrWhiteSpace(Model.Input.FollowUpHelp);
+    var needsCheck = suggested is not null && (suggested.Timeline.Length == 0 || suggested.RequestedAction.Length == 0);
+    var kannada = Model.Input.Language == "Kannada";
+}
+<details class="follow-up-panel" data-follow-up open="@(hasAnswers || needsCheck)">
+    <summary>@(kannada ? "ಹೆಚ್ಚಿನ ಮಾಹಿತಿ ಬೇಕೇ? ನಾಗರಿಕರನ್ನು ಕೇಳಿ" : "Need more details? Ask the citizen")</summary>
+    <p class="small muted">@(kannada ? "ತಿಳಿದಿರುವ ಉತ್ತರಗಳನ್ನು ಮಾತ್ರ ದಾಖಲಿಸಿ. ತಿಳಿಯದಿದ್ದರೆ ಖಾಲಿ ಬಿಡಿ. ಮೂಲ ದೂರನ್ನು ಬದಲಾಯಿಸುವುದಿಲ್ಲ." : "Record only answers the citizen gives. Leave unknown answers blank. These answers are added separately to the draft; the original complaint stays unchanged.")</p>
+    @if (suggested is not null)
+    {
+        <p class="field-help">Not extracted means a detail needs checking; it does not prove it is absent from the original.</p>
+        @if (string.IsNullOrWhiteSpace(Model.Input.District)) { <p class="follow-up-prompt"><a href="#Input_District">Which district did this happen in? Add it in District below.</a></p> }
+        @if (string.IsNullOrWhiteSpace(Model.Input.Location)) { <p class="follow-up-prompt"><a href="#Input_Location">Which ward, locality or village? Add the issue location below.</a></p> }
+    }
+    <label asp-for="Input.FollowUpTimeline">@(kannada ? "ಸಮಸ್ಯೆ ಯಾವಾಗ ಪ್ರಾರಂಭವಾಯಿತು?" : "When did the issue start, or how long has it continued?") <span class="label-hint">Optional · 120 characters</span></label>
+    @if (suggested?.Timeline.Length > 0) { <p class="field-help">Already extracted: @suggested.Timeline. Leave this blank unless the citizen adds a clarification.</p> }
+    <input asp-for="Input.FollowUpTimeline" maxlength="120" data-follow-up-answer placeholder="@(kannada ? "ಉದಾ: ಮೂರು ದಿನಗಳಿಂದ" : "e.g. Since Monday, or for three days")" />
+    <label asp-for="Input.FollowUpHelp">@(kannada ? "ಯಾವ ಸಹಾಯ ಬೇಕು?" : "What help does the citizen want?") <span class="label-hint">Optional · 500 characters</span></label>
+    @if (suggested?.RequestedAction.Length > 0) { <p class="field-help">Already extracted: @suggested.RequestedAction. Leave this blank unless the citizen adds a clarification.</p> }
+    <textarea asp-for="Input.FollowUpHelp" rows="3" maxlength="500" data-follow-up-answer placeholder="@(kannada ? "ನಾಗರಿಕರು ಕೋರಿದ ಸಹಾಯವನ್ನು ದಾಖಲಿಸಿ" : "Record the requested help in the citizen’s words")"></textarea>
+    <label class="check-row"><input asp-for="Input.FollowUpConfirmed" required="@hasAnswers" /><span>@(kannada ? "ಈ ಹೆಚ್ಚುವರಿ ಉತ್ತರಗಳನ್ನು ನಾಗರಿಕರೊಂದಿಗೆ ದೃಢಪಡಿಸಿದ್ದೇನೆ." : "I confirmed these additional answers with the citizen. They are not guesses or AI-generated facts.")</span></label>
+    <p id="follow-up-state" class="field-help" role="status" aria-live="polite"></p>
+    <p class="field-help">Timeline and requested-help answers in this section stay local and are not sent to AI. District and locality are included when AI drafting is configured. Review the final draft and service on the next screen.</p>
+</details>

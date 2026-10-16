@@ -1,0 +1,50 @@
+@page
+@model Praja.Web.Pages.CitizenModel
+@{ ViewData["Title"] = "Citizen help / ನಾಗರಿಕ ಸಹಾಯ"; }
+<div class="main-content citizen-content" lang="@(Model.Kannada ? "kn" : "en")">
+    <div class="page-heading"><div><span class="eyebrow">LOCAL PILOT · ಸ್ಥಳೀಯ ಪೈಲಟ್</span><h1>@Model.Text("A clear next step for your concern.", "ನಿಮ್ಮ ಸಮಸ್ಯೆಗೆ ಮುಂದಿನ ಹೆಜ್ಜೆ.")</h1><p class="muted">@Model.Text("Guided help in English and Kannada, plus private local case status.", "ಇಂಗ್ಲಿಷ್ ಮತ್ತು ಕನ್ನಡದಲ್ಲಿ ಮಾರ್ಗದರ್ಶನ ಹಾಗೂ ಖಾಸಗಿ ಸ್ಥಳೀಯ ಪ್ರಕರಣದ ಸ್ಥಿತಿ.")</p></div></div>
+    <div class="notice"><strong>@Model.Text("Rule-based guidance · AI is not used here.", "ನಿಯಮ ಆಧಾರಿತ ಮಾರ್ಗದರ್ಶನ · ಇಲ್ಲಿ AI ಬಳಸಲಾಗುವುದಿಲ್ಲ.")</strong><span>@Model.Text("Independent prototype. IPGRS is not connected; no government submissions.", "ಸ್ವತಂತ್ರ ಮಾದರಿ. IPGRS ಸಂಪರ್ಕವಿಲ್ಲ; ಸರ್ಕಾರಕ್ಕೆ ಸಲ್ಲಿಕೆ ಇಲ್ಲ.")</span></div>
+    <section class="panel form-panel"><h2>Submit or track a complaint</h2><p><a class="button primary" href="/Submit">Submit a complaint</a> <a class="button secondary" href="/Track">Track progress and confirm resolution</a> <a href="/Transparency">Public progress</a></p></section>
+    <div class="intake-grid">
+        <section class="panel form-panel" aria-labelledby="guide-heading">
+            <span class="eyebrow">01 · GUIDED ASSISTANT</span><h2 id="guide-heading">@Model.Text("How can we help?", "ನಾವು ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಹುದು?")</h2>
+            <form method="post" asp-page-handler="Guide">
+                <div asp-validation-summary="All" class="validation" role="alert"></div>
+                <label for="guide-language">Language / ಭಾಷೆ</label><select asp-for="Language" id="guide-language"><option value="English">English</option><option value="Kannada">ಕನ್ನಡ</option></select>
+                <label asp-for="Topic">@Model.Text("Choose your question", "ನಿಮ್ಮ ಪ್ರಶ್ನೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ")</label>
+                <select asp-for="Topic"><option value="filing">How to file a concern / ದೂರು ಹೇಗೆ ದಾಖಲಿಸಬೇಕು</option><option value="category">Which pilot service? / ಯಾವ ಪೈಲಟ್ ಸೇವೆ?</option><option value="status">How to check status / ಸ್ಥಿತಿ ಹೇಗೆ ಪರಿಶೀಲಿಸಬೇಕು</option></select>
+                <label asp-for="Concern">@Model.Text("Brief service issue (for a service suggestion)", "ಸಂಕ್ಷಿಪ್ತ ಸೇವಾ ಸಮಸ್ಯೆ (ಸೇವಾ ಸಲಹೆಗಾಗಿ)")</label>
+                <textarea asp-for="Concern" rows="4" maxlength="1000" placeholder="e.g. No water supply / ಉದಾ. ನೀರಿಲ್ಲ"></textarea>
+                <p class="field-help">@Model.Text("Avoid names, contact details and document numbers. Guidance is not saved as a case.", "ಹೆಸರುಗಳು, ಸಂಪರ್ಕ ವಿವರಗಳು ಮತ್ತು ದಾಖಲೆ ಸಂಖ್ಯೆಗಳನ್ನು ಬರೆಯಬೇಡಿ. ಮಾರ್ಗದರ್ಶನವನ್ನು ಪ್ರಕರಣವಾಗಿ ಉಳಿಸಲಾಗುವುದಿಲ್ಲ.")</p>
+                <div class="form-actions"><button class="button primary" type="submit">@Model.Text("Show guidance", "ಮಾರ್ಗದರ್ಶನ ತೋರಿಸಿ") →</button></div>
+            </form>
+            @if (Model.Guidance is not null)
+            {
+                <div class="review-note" role="status">
+                    @if (Model.SuggestedService is not null) { <h3>@Model.Text("Suggested pilot service", "ಸೂಚಿತ ಪೈಲಟ್ ಸೇವೆ"): @Model.SuggestedService</h3> }
+                    <p>@Model.Guidance</p>
+                </div>
+            }
+        </section>
+        <aside>
+            <section class="panel form-panel" aria-labelledby="track-heading">
+                <span class="eyebrow">02 · PRIVATE STATUS</span><h2 id="track-heading">@Model.Text("Check a registered case", "ನೋಂದಾಯಿತ ಪ್ರಕರಣವನ್ನು ಪರಿಶೀಲಿಸಿ")</h2>
+                <p class="muted small">@Model.Text("Use the access code supplied by your workspace officer. Codes expire within seven days.", "ಕಾರ್ಯಸ್ಥಳದ ಅಧಿಕಾರಿ ನೀಡಿದ ಪ್ರವೇಶ ಕೋಡ್ ಬಳಸಿ. ಕೋಡ್ ಏಳು ದಿನಗಳೊಳಗೆ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ.")</p>
+                <form method="post" asp-page-handler="Track">
+                    <label for="track-language">Language / ಭಾಷೆ</label><select name="Language" id="track-language"><option value="English" selected="@(!Model.Kannada)">English</option><option value="Kannada" selected="@(Model.Kannada)">ಕನ್ನಡ</option></select>
+                    <label asp-for="AccessCode">@Model.Text("Private access code", "ಖಾಸಗಿ ಪ್ರವೇಶ ಕೋಡ್")</label>
+                    <textarea asp-for="AccessCode" rows="3" required maxlength="2048" autocomplete="off" spellcheck="false"></textarea>
+                    <p class="field-help">@Model.Text("Keep the code private. Anyone with it can view this limited summary.", "ಕೋಡ್ ಖಾಸಗಿಯಾಗಿ ಇರಲಿ. ಅದನ್ನು ಹೊಂದಿರುವವರು ಈ ಸೀಮಿತ ವಿವರ ನೋಡಬಹುದು.")</p>
+                    <div class="form-actions"><button class="button primary" type="submit">@Model.Text("Check local status", "ಸ್ಥಳೀಯ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸಿ") →</button></div>
+                </form>
+                @if (Model.TrackingError is not null) { <p class="validation" role="alert">@Model.TrackingError</p> }
+                @if (Model.TrackedCase is { } item)
+                {
+                    <div class="review-note" role="status"><span class="case-reference">@item.Reference</span><h3>@item.Title</h3><p><strong>@Model.StatusLabel(item.Status)</strong></p><p>@item.District · @item.Service</p><p class="small">@Model.Text("Last updated (UTC)", "ಕೊನೆಯ ನವೀಕರಣ (UTC)"): <time datetime="@DateTime.SpecifyKind(item.UpdatedUtc, DateTimeKind.Utc).ToString("O")">@item.UpdatedUtc.ToString("dd MMM yyyy HH:mm") UTC</time></p><p class="small">@Model.Text("Local workspace status only. For case details or corrections, contact the officer who supplied the code.", "ಸ್ಥಳೀಯ ಕಾರ್ಯಸ್ಥಳದ ಸ್ಥಿತಿ ಮಾತ್ರ. ಪ್ರಕರಣದ ವಿವರಗಳು ಅಥವಾ ತಿದ್ದುಪಡಿಗಳಿಗಾಗಿ ಕೋಡ್ ನೀಡಿದ ಅಧಿಕಾರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.")</p></div>
+                }
+            </section>
+            <div class="notice vertical"><strong>@Model.Text("Before meeting the officer", "ಅಧಿಕಾರಿಯನ್ನು ಭೇಟಿ ಮಾಡುವ ಮೊದಲು")</strong><p>@Model.Text("Prepare the issue, district and locality, approximate start date, and the help you need. Ask for the local reference and a private status code after registration.", "ಸಮಸ್ಯೆ, ಜಿಲ್ಲೆ ಮತ್ತು ಸ್ಥಳ, ಸಮಸ್ಯೆ ಆರಂಭವಾದ ಅಂದಾಜು ದಿನಾಂಕ ಮತ್ತು ಬೇಕಾದ ಸಹಾಯವನ್ನು ಸಿದ್ಧಪಡಿಸಿ. ನೋಂದಣಿಯ ನಂತರ ಸ್ಥಳೀಯ ಉಲ್ಲೇಖ ಮತ್ತು ಖಾಸಗಿ ಸ್ಥಿತಿ ಕೋಡ್ ಕೇಳಿ.")</p></div>
+        </aside>
+    </div>
+    <p class="auth-fineprint">@Model.Text("This page offers filing, pilot service and status guidance. An officer must review and register a complaint.", "ಈ ಪುಟ ದೂರು ದಾಖಲಿಸುವಿಕೆ, ಪೈಲಟ್ ಸೇವೆ ಮತ್ತು ಸ್ಥಿತಿ ಮಾರ್ಗದರ್ಶನ ನೀಡುತ್ತದೆ. ಅಧಿಕಾರಿ ದೂರನ್ನು ಪರಿಶೀಲಿಸಿ ನೋಂದಣಿ ಮಾಡಬೇಕು.") <a class="text-link" href="/Account/Login">Officer sign in ↗</a></p>
+</div>

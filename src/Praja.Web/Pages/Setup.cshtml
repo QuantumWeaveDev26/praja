@@ -1,0 +1,17 @@
+@page
+@model SetupModel
+@{ ViewData["Title"] = "Create your workspace"; }
+<section class="auth-intro">
+    <a class="brand auth-brand" href="/"><span class="brand-mark">p<span>·</span></span><span>praja<small>GRIEVANCE WORKSPACE</small></span></a>
+    <div><span class="eyebrow">GRIEVANCE MANAGEMENT</span><h1>Set up your<br />complaint workspace.</h1><p>Capture concerns, review drafts and track resolution in one workspace.</p></div>
+    <div class="auth-bottom"><span>ಕನ್ನಡ + English</span><span>Local pilot workspace</span></div>
+</section>
+<section class="auth-panel"><div class="auth-card"><span class="eyebrow">FIRST-TIME SETUP</span><h2>Make this workspace yours.</h2><p class="muted">Create the officer account for this local pilot. Setup becomes unavailable once the account is created.</p>
+<form method="post" data-busy>
+    <div asp-validation-summary="All" class="validation" role="alert"></div>
+    <label asp-for="Input.Name">Your name</label><input asp-for="Input.Name" autocomplete="name" required maxlength="100" placeholder="Workspace officer" />
+    <label asp-for="Input.Email">Email address</label><input asp-for="Input.Email" type="email" autocomplete="username" required maxlength="200" placeholder="you@your-startup.in" />
+    <label asp-for="Input.Password">Create a password</label><input asp-for="Input.Password" type="password" autocomplete="new-password" required minlength="14" maxlength="128" /><p class="field-help">Use a passphrase of at least 14 characters.</p>
+    <label class="check-row"><input asp-for="Input.LoadDemo" /> <span>Include six fictional cases to explore the workflow</span></label>
+    <button class="button primary full" type="submit">Create workspace <span>→</span></button>
+</form><p class="auth-fineprint">An independent prototype for the Praja Seva problem statement. This account is local; it does not sign you in to IPGRS.</p></div></section>

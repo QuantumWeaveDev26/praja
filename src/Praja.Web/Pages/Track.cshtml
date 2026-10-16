@@ -1,0 +1,41 @@
+@page
+
+@model Praja.Web.Pages.TrackModel
+
+@{ViewData["Title"]="My complaint";}
+
+<div class="main-content"><h1>My complaint</h1><p>Track department action, inspect verified completion evidence and confirm whether your issue is resolved.</p><div asp-validation-summary="All" class="validation" role="alert"></div>
+
+@if(Model.Case is {} pending && Model.Work is null){
+
+<section class="panel form-panel"><span class="case-reference">@pending.Reference</span><h2>@pending.Title</h2><p><strong>Received — awaiting officer assignment</strong></p><p>@CaseRules.Departments[pending.Department] · @pending.District · @pending.Location</p><p>Submitted @pending.CreatedUtc.ToString("dd MMM yyyy HH:mm") UTC. Keep this tracking code; it will show progress after assignment.</p><form method="post" asp-page-handler="Exit"><button class="button secondary">Exit private case</button></form></section>
+
+}else if(Model.Case is not {} item||Model.Work is not {} work){
+
+<section class="panel form-panel"><h2>Open your private case</h2><p>Enter the code from your submission receipt or intake officer. Keep it private: its holder can view this case and respond to a resolution request.</p><form method="post" asp-page-handler="Open"><label for="Code">Private case code</label><textarea name="Code" id="Code" required maxlength="4096" autocomplete="off" spellcheck="false"></textarea><button class="button primary">Open complaint</button></form></section>
+
+}else{
+
+<section class="panel form-panel"><span class="case-reference">@item.Reference</span><h2>@item.Title</h2><p><strong>@CaseRules.WorkflowLabel(work.Stage)</strong> · @CaseRules.Departments[item.Department]</p><p>@item.Location, @item.District</p><p>Target date: @work.DueUtc.ToString("dd MMM yyyy")</p><form method="post" asp-page-handler="Exit"><button class="button secondary">Exit private case</button></form></section>
+
+@if(work.Stage is "CitizenConfirmation" or "Closed"){
+
+<section class="panel form-panel"><h2>Verified completion report</h2><p>@work.CompletionNote</p><p>Reported completion coordinates: @work.Latitude, @work.Longitude · Photo capture time: @work.CapturedUtc?.ToString("dd MMM yyyy HH:mm") UTC</p><form method="post" asp-page-handler="Photo"><button class="button secondary">Download completion photo</button></form></section>}
+
+@if(work.Stage=="CitizenConfirmation"){
+
+<section class="panel form-panel"><h2>Is your issue resolved?</h2><p>A reviewer checked the submitted evidence. Please check the actual result. Your silence does not close this complaint.</p><form method="post" asp-page-handler="Respond"><input name="version" value="@work.Version" type="hidden"/><label for="decision">Your decision</label><select name="decision" id="decision" required><option value="">Choose a decision</option><option value="Confirm">Yes, the issue is resolved</option><option value="Dispute">No, further work is needed</option></select><label for="note">Explain what remains unresolved, or add a confirmation note</label><textarea name="note" id="note" maxlength="1500"></textarea><button class="button primary">Submit my decision</button></form></section>}
+
+<section class="panel form-panel"><h2>Progress timeline</h2><ol class="timeline">@foreach(var update in Model.Updates){<li><strong>@CaseRules.WorkflowLabel(update.Stage) · @update.Actor</strong><p>@update.Note</p><time>@update.AtUtc.ToString("dd MMM yyyy HH:mm") UTC</time></li>}</ol></section>
+
+}
+@if(Model.Case is {} incident && (incident.IncidentPhotoId is not null || incident.IncidentLatitude is not null)){
+<section class="panel form-panel"><h2>Submitted incident evidence</h2>
+@if(incident.IncidentLatitude is not null){<p>Reported incident coordinates: @incident.IncidentLatitude, @incident.IncidentLongitude</p>@if(incident.IncidentAccuracyMetres is not null){<p>Device-reported accuracy: @incident.IncidentAccuracyMetres metres.</p>}<p>These coordinates describe the submitted incident location. They do not prove where or when a photo was taken.</p>}
+@if(incident.IncidentPhotoId is not null){<form method="post" asp-page-handler="IncidentPhoto"><button class="button secondary">Download submitted incident photo</button></form>}
+</section>}
+@if(Model.Case?.PublicMapConsent == true){<section class="panel form-panel"><h2>Public map visibility</h2><p>You agreed to share the service, reference, dates and progress with an approximate location. Your complaint text and photos stay private. Removing it here does not delete the complaint or stop work. Information already viewed or copied by others cannot be recalled.</p><form method="post" asp-page-handler="HideMap"><button class="button secondary">Remove from public map</button></form></section>}
+@if(Model.Notifications.Count>0){<section class="panel form-panel"><h2>Case notifications</h2><p>Latest 50 updates. Refresh this page to see new notifications.</p>@foreach(var alert in Model.Notifications){<article class="workflow-card"><strong>@alert.Severity</strong><p>@alert.Message</p><time>@alert.CreatedUtc.ToString("dd MMM yyyy HH:mm") UTC</time></article>}</section>}
+</div>
+
+

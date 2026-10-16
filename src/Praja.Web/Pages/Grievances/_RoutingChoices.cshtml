@@ -1,0 +1,7 @@
+@model Praja.Web.Pages.Grievances.DetailsModel
+<div class="form-grid" data-routing-choices>
+    <div><label asp-for="CategoryCode">Demo category</label><select asp-for="CategoryCode"><option value="">Not classified</option>@foreach(var category in PilotRoutingCatalog.Categories){<option value="@category.Key" data-department="@category.Department" data-label="@category.Label">@CaseRules.Departments[category.Department] · @category.Label</option>}</select></div>
+    <div><label asp-for="SubcategoryCode">Demo issue / subcategory</label><select asp-for="SubcategoryCode"><option value="">Not classified</option>@foreach(var issue in PilotRoutingCatalog.Issues){<option value="@issue.Key" data-category="@issue.Category" data-label="@issue.Label">@PilotRoutingCatalog.CategoryLabel(issue.Category) · @issue.Label</option>}</select></div>
+</div>
+<p class="field-help" id="routing-choice-state" role="status" aria-live="polite"></p>
+<p class="field-help">Choose only labels that fit the complaint. Uncertain category or issue can stay unclassified. Changing the service clears dependent choices when JavaScript is available. These are demo labels, not government routing codes.</p>

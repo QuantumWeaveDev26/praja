@@ -1,0 +1,50 @@
+@page "/Analytics"
+@model Praja.Web.Pages.AnalyticsModel
+@{ ViewData["Title"] = "Analytics"; }
+<div class="page-heading"><div><span class="eyebrow">LOCAL WORKSPACE ANALYTICS</span><h1>A clearer view of the casework.</h1><p class="muted">Your saved grievances, grouped for follow-through. Dates and durations use UTC.</p></div></div>
+<section class="panel analytics-filter-panel">
+    <form method="get" class="filters analytics-filters">
+        <div><label asp-for="Period">Created during</label><select asp-for="Period"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="all">All time</option></select></div>
+        <div><label asp-for="District">District</label><select asp-for="District"><option value="">All districts</option>@foreach (var district in Model.DistrictOptions) { <option value="@district">@district</option> }</select></div>
+        <div><label asp-for="Department">Service</label><select asp-for="Department"><option value="">All services</option>@foreach (var department in CaseRules.Departments) { <option value="@department.Key">@department.Value</option> }</select></div>
+        <button type="submit" class="button primary">Apply filters</button><a class="text-link" href="/Analytics">Reset</a>
+        <label class="check-row analytics-sample-check"><input asp-for="IncludeSamples" />Include fictional sample cases</label>
+    </form>
+    <div asp-validation-summary="All" class="validation analytics-validation"></div>
+    <div class="panel-heading compact"><span class="muted small">Periods include today and the preceding UTC calendar days. Filters use creation date; statuses are current.</span></div>
+</section>
+@if (Model.Report is { } report)
+{
+    @if (Model.IncludeSamples)
+    {
+        <div class="notice sample-notice"><span class="notice-icon">◇</span><div><strong>Fictional sample data is included.</strong><p>@report.SampleCount of @report.Volume matching cases are samples. These figures are unsuitable as evidence of real service performance.</p></div></div>
+    }
+    <div class="metric-grid">
+        <article class="metric"><div><span>Matching cases</span><span class="metric-symbol">▤</span></div><strong>@report.Volume</strong><p>All current workflow stages</p></article>
+        <article class="metric"><div><span>Open</span><span class="metric-symbol amber">◷</span></div><strong>@report.Open</strong><p>Includes drafts and closure review</p></article>
+        <article class="metric"><div><span>Closed</span><span class="metric-symbol green">✓</span></div><strong>@report.Closed</strong><p>Current local case status</p></article>
+        <article class="metric"><div><span>Average time to close</span><span class="metric-symbol blue">◴</span></div><strong class="analytics-duration">@(report.AverageResolutionHours is double hours ? (hours / 24).ToString("0.0") + " d" : "—")</strong><p>Created → closed · @report.TimedClosures usable timestamps</p></article>
+    </div>
+    <section class="notice analytics-scope"><div><strong>Only your locally saved workspace records.</strong><p>As of @Model.AsOfUtc.ToString("dd MMM yyyy HH:mm") UTC. These figures do not represent government-wide performance. No government system is connected. Closure duration uses recorded timestamps, with missing, negative or future closure timestamps excluded; no SLA or target is assumed.</p></div></section>
+    <div class="analytics-export-row"><p class="muted small">CSV includes reference, title, district, service, status, UTC timestamps and sample flag. Original complaint, location and citizen feedback are omitted.</p><a class="button secondary" asp-page="/Analytics" asp-page-handler="Export" asp-route-Period="@Model.Period" asp-route-District="@Model.District" asp-route-Department="@Model.Department" asp-route-IncludeSamples="@Model.IncludeSamples">Download filtered CSV</a></div>
+    @if (report.Volume == 0)
+    {
+        <section class="panel"><div class="empty-state"><span>◇</span><h3>No cases match these filters.</h3><p>Samples are excluded by default. Try another period or register a grievance to start building a local view.</p><a class="button secondary" href="/Grievances/New">Register a grievance</a></div></section>
+    }
+    else
+    {
+        <div class="analytics-group-grid">
+            @foreach (var grouping in new[] { (Title: "By service", Groups: report.Departments), (Title: "By district", Groups: report.Districts), (Title: "By intake channel", Groups: report.Sources) })
+            {
+                <section class="panel"><div class="panel-heading"><h2>@grouping.Title</h2></div><div class="table-wrap"><table><thead><tr><th scope="col">Group</th><th scope="col">Cases</th><th scope="col">Open</th><th scope="col">Closed</th></tr></thead><tbody>@foreach (var group in grouping.Groups) { <tr><th scope="row">@group.Label</th><td>@group.Volume</td><td>@group.Open</td><td>@group.Closed</td></tr> }</tbody></table></div></section>
+            }
+        </div>
+        <div class="analytics-detail-grid">
+            <section class="panel"><div class="panel-heading"><div><span class="eyebrow">INTAKE TREND</span><h2>Cases created each day</h2><p class="muted small">UTC dates with at least one matching case. Unlisted dates have no matching cases.</p></div></div><div class="table-wrap analytics-trend-table"><table><thead><tr><th scope="col">Date (UTC)</th><th scope="col">Volume</th><th scope="col">Cases</th></tr></thead><tbody>@foreach (var day in report.DailyTrend) { <tr><th scope="row"><time datetime="@day.DayUtc.ToString("yyyy-MM-dd")">@day.DayUtc.ToString("dd MMM yyyy")</time></th><td><meter min="0" max="@report.DailyTrend.Max(d => d.Volume)" value="@day.Volume" aria-label="@day.Volume cases created on @day.DayUtc.ToString("dd MMM yyyy")">@day.Volume</meter></td><td>@day.Volume</td></tr> }</tbody></table></div></section>
+            <section class="panel"><div class="panel-heading"><div><span class="eyebrow">DOCUMENT CHECKLIST</span><h2>@report.FlaggedClosureCases cases with closure flags</h2><p class="muted small">@report.ClosureFlagCount flags across cases currently awaiting closure review. A case can have several flags. These checks do not verify physical resolution.</p></div></div>
+            @if (report.ClosureFlags.Count == 0) { <div class="empty-state"><h3>No outstanding checklist flags in this view.</h3><p>Only cases in closure review are assessed here.</p></div> }
+            else { <div class="table-wrap"><table><thead><tr><th scope="col">Checklist flag</th><th scope="col">Cases</th></tr></thead><tbody>@foreach (var flag in report.ClosureFlags) { <tr><td>@flag.Label</td><td>@flag.Count</td></tr> }</tbody></table></div> }
+            </section>
+        </div>
+    }
+}

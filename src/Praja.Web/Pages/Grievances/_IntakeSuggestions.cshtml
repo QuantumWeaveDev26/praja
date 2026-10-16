@@ -1,0 +1,38 @@
+@model Praja.Web.Pages.Grievances.NewModel
+@if (Model.Analysis is { } suggestion)
+{
+    <section class="intake-suggestions form-section" aria-label="Intake suggestions" role="status">
+        <span class="eyebrow">SUGGESTIONS FOR YOUR REVIEW</span><h2>Check what the complaint tells us.</h2>
+        <p class="small muted">@suggestion.Method. Nothing has been registered.</p>
+        <dl class="record-details">
+            <dt>Suggested service</dt><dd>@CaseRules.Departments[suggestion.Route.Department]</dd>
+            <dt>Demo category</dt><dd>@PilotRoutingCatalog.CategoryLabel(suggestion.Route.Category)</dd>
+            <dt>Demo issue</dt><dd>@PilotRoutingCatalog.IssueLabel(suggestion.Route.Subcategory)</dd>
+            <dt>Routing method</dt><dd>@(suggestion.Route.Method.Length == 0 ? "Earlier suggestion" : suggestion.Route.Method)</dd>
+            <dt>Routing source excerpt</dt><dd>@(suggestion.Route.Evidence.Length == 0 ? "No single supporting excerpt. Review the original." : suggestion.Route.Evidence)</dd>
+            <dt>Reported district</dt><dd>@(suggestion.District.Length == 0 ? "Not extracted" : suggestion.District)</dd>
+            <dt>Reported locality</dt><dd>@(suggestion.Location.Length == 0 ? "Not extracted" : suggestion.Location)</dd>
+            <dt>Reported timeline</dt><dd>@(suggestion.Timeline.Length == 0 ? "Not extracted" : suggestion.Timeline)</dd>
+            <dt>Requested help</dt><dd>@(suggestion.RequestedAction.Length == 0 ? "Not extracted" : suggestion.RequestedAction)</dd>
+            <dt>Detected language</dt><dd>@suggestion.Language</dd>
+        </dl>
+        <p class="field-help">@suggestion.Route.Reason These are pilot service labels, not official IPGRS category codes.</p>
+        @if(suggestion.Route.Candidates.Count > 1){<p class="notice">Keyword hints mention: @string.Join(", ",suggestion.Route.Candidates.Select(key=>CaseRules.Departments[key])). Check which concerns need separate handling. These hints are not confirmed routes.</p>}
+        @if (suggestion.RejectedUnsupportedFields)
+        { <p class="notice">Some returned details were unsupported or outside the allowed limits and were removed. Check the original and enter missing information.</p> }
+        <ul class="plain-list">
+            @if (string.IsNullOrWhiteSpace(Model.Input.District)) { <li>Add the district where the issue occurred.</li> }
+            @if (string.IsNullOrWhiteSpace(Model.Input.Location)) { <li>Add the ward, locality, or village where the issue occurred.</li> }
+            @if (suggestion.Timeline.Length == 0) { <li>Check when the issue started. Record a confirmed answer separately in the follow-up section below, or leave it unknown.</li> }
+            @if (suggestion.RequestedAction.Length == 0) { <li>Check what help the citizen wants. Do not guess a requested action.</li> }
+            @if (suggestion.Route.NeedsManualReview) { <li>Choose the correct service on the draft-review screen.</li> }
+        </ul>
+        <p class="small muted">Changing the complaint requires fresh suggestions. Suggestions expire after 30 minutes. Existing district and locality entries are kept.</p>
+        <button class="button secondary" type="submit" asp-page-handler="ClearAnalysis" formnovalidate>Clear suggestions</button>
+    </section>
+}
+else if (!string.IsNullOrEmpty(Model.AnalysisToken))
+{
+    <p class="notice">Refresh suggestions for this complaint or clear them and continue manually.</p>
+    <button class="button secondary" type="submit" asp-page-handler="ClearAnalysis" formnovalidate>Clear suggestions</button>
+}

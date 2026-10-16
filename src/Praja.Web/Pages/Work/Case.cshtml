@@ -1,0 +1,94 @@
+@page "{id:guid}"
+@model Praja.Web.Pages.Work.CaseModel
+@{ViewData["Title"]=Model.Case.Reference;var item=Model.Case;var work=Model.Work;var isContractor=Model.Role.Role=="Contractor"&&work?.ContractorId==User.OwnerId();var isOfficer=Model.Role.Role=="Department"&&work?.AssignedOfficerId==User.OwnerId();}
+<a href="/Work">Back to team casework</a><div class="page-heading"><div><span class="eyebrow">@item.Reference</span><h1>@item.Title</h1><p>@item.District · @item.Location · @CaseRules.Departments[item.Department]</p></div><span class="badge">@CaseRules.WorkflowLabel(work?.Stage ?? item.Status)</span></div>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+<section class="panel form-panel"><h2>Original complaint</h2><p class="document-text">@item.OriginalText</p></section>
+@if(Model.Role.Role != "Contractor"){
+<section class="panel form-panel"><h2>Community observations</h2>
+<p>Latest 100 reports from browsers reporting a nearby location. These are unverified observations; identity and physical presence are not established. A report alone does not change the case status. The responsible officer or an admin can investigate a “not fixed” report, then dismiss it or reopen the work. Reopening resets the earlier completion approval and requires the completion review process again.</p>
+@if(Model.CommunityReports.Count==0){<p>No community reports yet.</p>}
+else{<ul>@foreach(var report in Model.CommunityReports){
+<li><strong>@(report.Decision=="Fixed"?"Reported fixed":"Reported not fixed")</strong> · @report.CreatedUtc.ToString("dd MMM yyyy HH:mm") UTC
+<p>@report.Note</p>
+<p>Repair round @report.FeedbackRound @(report.FeedbackRound==work?.FeedbackRound?"— current":"— historical; retained for reference")</p>
+@if(report.Decision=="NotFixed"){
+<p><strong>Staff review:</strong> @report.ReviewState</p>
+@if(report.ReviewState=="Reopened"){<p>Work was reopened. New completion evidence is required; earlier evidence files remain as history.</p>}
+@if(!string.IsNullOrWhiteSpace(report.ReviewNote)){<p><strong>Private review note:</strong> @report.ReviewNote</p>}
+@if(report.ReviewedUtc is {} reviewedAt){<p>Last reviewed @reviewedAt.ToString("dd MMM yyyy HH:mm") UTC</p>}
+@if(work is not null && report.FeedbackRound==work.FeedbackRound && (Model.Role.Role=="Admin" || isOfficer) && (report.ReviewState is "Pending" or "Investigating")){
+<form method="post" asp-page-handler="CommunityReview">
+<input name="ReportId" type="hidden" value="@report.Id" />
+<input name="ReportVersion" type="hidden" value="@report.Version" />
+<input name="Version" type="hidden" value="@work.Version" />
+<label for="community-action-@report.Id">Review action</label>
+<select id="community-action-@report.Id" name="ReviewAction" required>
+<option value="">Choose an action</option>
+@if(report.ReviewState=="Pending"){<option value="Investigate">Start investigation</option>}
+<option value="Dismiss">Dismiss report after review</option>
+@if(report.ReviewState=="Investigating" && (work.Stage is "CitizenConfirmation" or "Closed")){<option value="Reopen">Reopen work after investigation</option>}
+</select>
+<label for="community-note-@report.Id">Reason and investigation findings (private to authorised staff)</label>
+<textarea id="community-note-@report.Id" name="ReviewNote" required minlength="5" maxlength="1000" rows="3"></textarea>
+@if(report.ReviewState=="Investigating" && (work.Stage is "CitizenConfirmation" or "Closed")){
+<label for="community-due-@report.Id">New target date — required when reopening work</label>
+<input id="community-due-@report.Id" name="ReviewDue" type="date" />
+<p>Choose a new target date when reopening. The assigned team must complete the work and submit evidence for review again.</p>
+}
+<button class="button secondary" type="submit">Save review action</button>
+</form>
+}
+}
+</li>}</ul>}
+</section>}
+@if(item.IncidentPhotoId is not null || item.IncidentLatitude is not null){
+<section class="panel form-panel"><h2>Citizen incident evidence</h2>
+@if(item.IncidentLatitude is not null){<p>Reported incident coordinates: @item.IncidentLatitude, @item.IncidentLongitude</p>@if(item.IncidentAccuracyMetres is not null){<p>Device-reported accuracy: @item.IncidentAccuracyMetres metres.</p>}<p>Confirm the incident location with the written address. Coordinates do not establish photo capture location or authenticity.</p>}
+@if(item.IncidentPhotoId is not null){<a class="button secondary" href="?handler=Download&amp;file=@item.IncidentPhotoId">Download submitted incident photo</a>}
+</section>}
+@if(work is null){
+<section class="panel form-panel"><h2>Assign department officer</h2>
+@if(item.Status=="Registered" && Model.Role.Role is "Admin" or "Intake"){<form method="post" asp-page-handler="Route"><input name="Version" type="hidden" value="@item.Version"/><label for="route-department">Review service route</label><select id="route-department" name="Department">@foreach(var d in CaseRules.Departments.Where(d=>d.Key!="review")){<option value="@d.Key" selected="@(d.Key==item.Department)">@d.Value</option>}</select><button class="button secondary">Confirm service route</button></form>}
+@if((item.Status is "Registered" or "InProgress" or "ClosureReview")&&(Model.Role.Role is "Admin" or "Intake")){
+<form method="post" asp-page-handler="Assign"><input name="Version" type="hidden" value="@item.Version"/><label for="Officer">Responsible officer</label><select name="Officer" id="Officer" required><option value="">Choose officer</option>@foreach(var officer in Model.Officers){<option value="@officer.Id">@officer.Name</option>}</select><label asp-for="Due">Target date</label><input asp-for="Due" type="date" required/><button class="button primary">Assign complaint</button></form><p>If no officer is listed, the admin must create an account for this department under Manage officers.</p>
+}else{<p>This existing case uses the earlier workflow. Newly registered complaints can enter team casework here.</p>}
+</section>
+}else{
+<section class="panel form-panel"><h2>Responsibility and target</h2><p>Officer: @(Model.Officers.FirstOrDefault(o=>o.Id==work.AssignedOfficerId)?.Name ?? "Assigned officer") · Target: @work.DueUtc.ToString("dd MMM yyyy")</p>@if(work.ContractorId is not null){<p>Field worker: @(Model.Contractors.FirstOrDefault(o=>o.Id==work.ContractorId)?.Name ?? "Assigned contractor") · @(work.ContractorAccepted?"Accepted":"Awaiting acceptance")</p>}</section>
+@if(Model.Role.Role is "Admin" or "Intake"){
+@if(work.Stage!="Closed"){
+<section class="panel form-panel"><h2>Reassign responsibility</h2><p>Move responsibility to another officer in the same department. The target date, current stage, evidence and citizen access stay intact. The reason appears in the citizen timeline.</p><form method="post" asp-page-handler="Reassign"><input name="Version" type="hidden" value="@work.Version"/><label for="replacement">New responsible officer</label><select id="replacement" name="Officer" required><option value="">Choose another officer</option>@foreach(var officer in Model.Officers.Where(o=>o.Id!=work.AssignedOfficerId)){<option value="@officer.Id">@officer.Name</option>}</select><label for="reassign-reason">Reason (visible to citizen)</label><textarea id="reassign-reason" name="Note" required minlength="5" maxlength="1000"></textarea><button class="button secondary">Reassign complaint</button></form></section>
+}
+<section class="panel form-panel"><h2>Transfer to another department</h2>
+@if(work.Stage is "Assigned" or "InProgress"){
+<p>Choose the officer who should take responsibility. The deadline and citizen tracking code stay unchanged. The new officer must accept the case. Previous reports and evidence remain in its history; service categories are cleared for the new department.</p>
+@if(Model.TransferOfficers.Count==0){<p>No active officers in other departments. Ask the administrator to create or enable a suitable officer account.</p>}else{
+<form method="post" asp-page-handler="Transfer"><input name="Version" type="hidden" value="@work.Version"/><label for="transfer-officer">Destination department and officer</label><select id="transfer-officer" name="Officer" required><option value="">Choose department and officer</option>@foreach(var officer in Model.TransferOfficers){<option value="@officer.Id">@CaseRules.Departments.GetValueOrDefault(officer.Department,officer.Department) — @officer.Name</option>}</select><label for="transfer-reason">Reason (visible to citizen)</label><textarea id="transfer-reason" name="Note" required minlength="5" maxlength="1000"></textarea><button class="button secondary">Transfer complaint</button></form>
+}}else{<p>Transfer is available for assigned or active work. Cases awaiting verification or citizen approval must first be returned for further work. Closed cases cannot transfer.</p>}
+</section>
+<section class="panel form-panel"><h2>Citizen access</h2><p>Give this private seven-day code to the verified complainant. It allows viewing progress and shared completion evidence, and confirming or disputing resolution. Issuing a new code revokes the previous one.</p><form method="post" asp-page-handler="Share"><button class="button secondary">Issue citizen access code</button></form>@if(Model.AccessCode is not null){<textarea readonly rows="4">@Model.AccessCode</textarea><p>Citizen portal: <a href="/Track">/Track</a></p>}</section>
+}
+@if(isOfficer&&work.Stage=="InProgress"){
+<section class="panel form-panel"><h2>@(work.ContractorId is null?"Assign field work":"Reassign field work")</h2><p>The contractor must belong to this department. You remain responsible for reviewing their completion evidence. Assignment and its reason appear in the citizen timeline.</p>
+@if(!Model.Contractors.Any(c=>c.Id!=work.ContractorId)){<p>No other active contractors are available. Ask the administrator to create a contractor account for this department.</p>}else{
+<form method="post" asp-page-handler="AssignContractor"><input name="Version" type="hidden" value="@work.Version"/><label for="contractor">Contractor / field worker</label><select id="contractor" name="Officer" required><option value="">Choose contractor</option>@foreach(var contractor in Model.Contractors.Where(c=>c.Id!=work.ContractorId)){<option value="@contractor.Id">@contractor.Name</option>}</select><label for="contractor-reason">Assignment instructions (visible to citizen)</label><textarea id="contractor-reason" name="Note" required minlength="5" maxlength="1000"></textarea><button class="button primary">Assign field work</button></form>}
+</section>}
+@if((isOfficer&&(work.Stage is "Assigned" or "InProgress"))||(isContractor&&work.Stage=="InProgress")){
+<section class="panel form-panel"><h2>Update work</h2><p>Updates are visible to the citizen. Include progress and any delay; omit private contact details.</p><form method="post" asp-page-handler="Act"><input name="Version" type="hidden" value="@work.Version"/><label for="Action">Action</label><select name="Action" id="Action">@if(isContractor){@if(!work.ContractorAccepted){<option value="FieldAccept">Accept and start field work</option>}else{<option value="FieldProgress">Publish field progress</option><option value="FieldComplete">Submit completed work to department officer</option>}}else if(work.Stage=="Assigned"){<option value="Accept">Accept and start work</option>}else{<option value="Progress">Publish progress update</option>@if(work.ContractorId is null){<option value="Complete">Submit completed work for verification</option>}}</select><label asp-for="Note">Progress or completion report</label><textarea asp-for="Note" required minlength="5" maxlength="1500"></textarea>
+@if(work.Stage=="InProgress"&&((isContractor&&work.ContractorAccepted)||(isOfficer&&work.ContractorId is null))){
+<h3>Required when submitting completed work</h3><label asp-for="Photo">Completion photo</label><select asp-for="Photo"><option value="">Choose uploaded photo</option>@foreach(var file in Model.Files){<option value="@file.Id">@file.FileName</option>}</select><button class="button secondary" type="button" data-capture-location>Use my current GPS location</button><p data-location-status role="status">Use GPS only while at the work site. Permission is requested when you click.</p><label asp-for="Latitude">Latitude (−90 to 90)</label><input asp-for="Latitude" type="number" step="any" min="-90" max="90"/><label asp-for="Longitude">Longitude (−180 to 180)</label><input asp-for="Longitude" type="number" step="any" min="-180" max="180"/><label asp-for="Captured">Photo capture time (UTC)</label><input asp-for="Captured" type="datetime-local"/><p>Coordinates and capture time are reported by the person submitting evidence. The reviewer must verify them against the complaint location.</p><label class="check-row"><input asp-for="Checked"/><span>I checked this photo for personal information and authorise sharing it, its location and this report with the citizen.</span></label>
+}<button class="button primary">Save update</button></form></section>
+@if(work.Stage=="InProgress"&&(!isContractor||work.ContractorAccepted)){
+<section class="panel form-panel"><h2>Upload supporting evidence</h2><form method="post" asp-page-handler="Upload" enctype="multipart/form-data"><input name="Version" type="hidden" value="@item.Version"/><label asp-for="Upload">Photo or document (PNG, JPEG or PDF, up to 8 MB)</label><input asp-for="Upload" type="file" accept=".png,.jpg,.jpeg,.pdf" required/><label for="upload-note">Description</label><input id="upload-note" name="Note" maxlength="500"/><label class="check-row"><input name="Checked" type="checkbox" value="true" required/><span>I have permission to retain this evidence.</span></label><button class="button secondary">Upload evidence</button></form></section>
+}}
+@if(work.CompletionPhotoId is not null){<section class="panel form-panel"><h2>Completion evidence</h2><p>@work.CompletionNote</p><p>Reported coordinates: @work.Latitude, @work.Longitude · Captured: @work.CapturedUtc?.ToString("dd MMM yyyy HH:mm") UTC</p><a class="button secondary" href="?handler=Download&file=@work.CompletionPhotoId">Download completion photo</a><p>Photo and coordinates require independent checking; metadata alone does not prove that work is complete.</p></section>}
+@if(isOfficer&&work.Stage=="OfficerReview"){
+<section class="panel form-panel"><h2>Review contractor completion</h2><p>Check the report, photo and location before forwarding the work to the independent reviewer. Citizen approval follows reviewer verification.</p><form method="post" asp-page-handler="Act"><input name="Version" type="hidden" value="@work.Version"/><label for="field-decision">Decision</label><select name="Action" id="field-decision"><option value="ReturnField">Return to contractor for correction</option><option value="ApproveField">Approve evidence and send for verification</option></select><label for="field-findings">Review findings (visible to citizen)</label><textarea name="Note" id="field-findings" required minlength="5" maxlength="1500"></textarea><label class="check-row"><input name="Checked" type="checkbox" value="true"/><span>I inspected the completion photo, capture time, location and report against the complaint.</span></label><button class="button primary">Record officer decision</button></form></section>
+}
+@if(Model.Role.Role=="Reviewer"&&work.Stage=="Verification"){
+<section class="panel form-panel"><h2>Verify completed work</h2><form method="post" asp-page-handler="Act"><input name="Version" type="hidden" value="@work.Version"/><label for="review-action">Decision</label><select name="Action" id="review-action"><option value="Return">Return to department for correction</option><option value="Verify">Verified; ask citizen to confirm</option></select><label for="review-note">Verification findings</label><textarea name="Note" id="review-note" required minlength="5" maxlength="1500"></textarea><label class="check-row"><input name="Checked" type="checkbox" value="true"/><span>I inspected the photo, capture time, location and report against the original complaint and verified the work.</span></label><button class="button primary">Record decision</button></form></section>
+}
+<section class="panel form-panel"><h2>Case timeline</h2><p>These updates are also visible in the private citizen portal.</p><ol class="timeline">@foreach(var update in Model.Updates){<li><strong>@update.Stage · @update.Actor</strong><p>@update.Note</p><time>@update.AtUtc.ToString("dd MMM yyyy HH:mm") UTC</time></li>}</ol></section>
+}
+

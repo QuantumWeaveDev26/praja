@@ -1,0 +1,15 @@
+@page "{id:guid}"
+@model Praja.Web.Pages.Intake.DetailsModel
+@{ViewData["Title"]="Incoming message";var item=Model.Item;}
+<a href="/Intake" class="back-link">← Intake inbox</a><div class="page-heading"><div><span class="eyebrow">@item.Channel · @item.Language</span><h1>Review the incoming concern.</h1><p class="muted">Received @item.ReceivedUtc.ToString("dd MMM yyyy, HH:mm") UTC · Captured by @item.CapturedBy</p></div><span class="badge draft">@item.State</span></div>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+@if (InboxImportService.IsDemoSample(item)) { <div class="notice vertical"><strong>Fictional demo message.</strong><p>A draft made from this exact sample is marked Sample and excluded from normal analytics by default.</p></div> }
+<section class="panel source-panel"><div class="panel-heading"><h2>Preserved original message</h2></div><blockquote class="original-text">@item.OriginalText</blockquote><dl class="record-details"><dt>Source link</dt><dd>@if(item.SourceUrl.Length>0){<a class="text-link" href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">@item.SourceUrl</a>}else{<span>Not supplied</span>}</dd><dt>Source message ID</dt><dd>@(item.ExternalId??"Not supplied")</dd><dt>Inbox reference</dt><dd>@item.Id</dd></dl></section>
+@if(Model.Duplicates.Count>0){<section class="panel form-panel"><h2>Matching wording needs a check.</h2><p class="muted">These may describe the same issue. Compare the records before creating another case; no duplicate was automatically discarded.</p><ul class="plain-list">@foreach(var match in Model.Duplicates){<li><a class="text-link" href="@(match.IsCase?"/Grievances/Details/":"/Intake/Details/")@match.Id">@match.Label →</a></li>}</ul></section>}
+<p class="muted small">Matching checks compare normalised wording in this inbox and recent local cases. Reworded complaints and older cases still need officer review.</p>
+@if(item.State=="Pending"){
+<section class="panel action-panel"><div><h2>Ready to prepare a draft?</h2><p class="muted">Review source relevance and duplicates first. AI processing still requires consent on the intake screen.</p></div><a class="button primary" href="/Grievances/New?InboxId=@item.Id">Review details and prepare draft →</a></section>
+<section class="panel form-panel"><h2>Keep out of casework.</h2><p class="muted">Retain this message with a reason if it is irrelevant, spam, or already handled. This does not delete it.</p><form method="post" asp-page-handler="Dismiss" data-busy><input asp-for="Version" type="hidden"/><label asp-for="ReviewNote">Review reason</label><textarea asp-for="ReviewNote" rows="3" required minlength="20" maxlength="500"></textarea><button class="button secondary">Dismiss from pending inbox</button></form></section>
+}else{
+<section class="panel form-panel"><h2>Review recorded.</h2><p>@item.ReviewNote</p><p class="muted">@item.ReviewedBy · @item.ReviewedUtc?.ToString("dd MMM yyyy, HH:mm") UTC</p>@if(item.GrievanceId is { } caseId){<a class="button primary" href="/Grievances/Details/@caseId">Open prepared case →</a>}</section>
+}

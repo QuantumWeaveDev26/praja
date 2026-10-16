@@ -1,0 +1,23 @@
+@model Praja.Web.Pages.Grievances.DetailsModel
+<section class="panel evidence-panel" aria-labelledby="evidence-heading">
+<div class="panel-heading"><div><span class="eyebrow">SUPPORTING RECORDS</span><h2 id="evidence-heading">Evidence files</h2><p class="muted small">@Model.Evidence.Count / 10 files · Stored privately and encrypted. Available only to the handling officer.</p></div></div>
+@if(TempData["EvidenceNotice"] is string notice){<div class="notice" role="status">@notice</div>}
+@if(TempData["EvidenceError"] is string error){<div class="validation" role="alert">@error</div>}
+@if(Model.Evidence.Count>0)
+{
+<ul class="evidence-list">@foreach(var file in Model.Evidence){<li><div><a class="text-link" asp-page="/Grievances/Evidence" asp-route-id="@Model.Case.Id" asp-route-attachmentId="@file.Id">Download @file.FileName ↗</a><p class="small muted">@((file.ByteLength/1024d).ToString("0.0")) KB · @file.UploadedBy · @file.CreatedUtc.ToString("dd MMM yyyy, HH:mm") UTC</p>@if(file.Description.Length>0){<p class="small">@file.Description</p>}<p class="field-help evidence-hash">File ID: @file.Id<br />SHA-256: @file.Sha256</p></div><span class="badge draft">Officer review required</span></li>}</ul>
+}
+else{<p class="document-text">No supporting files have been retained for this case.</p>}
+@if(Model.Case.Status is "Registered" or "InProgress" or "ClosureReview")
+{
+<form method="post" asp-page="/Grievances/Evidence" asp-route-id="@Model.Case.Id" enctype="multipart/form-data" class="evidence-form" data-busy>
+<input name="Version" value="@Model.Case.Version" type="hidden" />
+<label for="evidence-file">Supporting document or image</label><input type="file" id="evidence-file" name="EvidenceFile" accept=".pdf,.png,.jpg,.jpeg" required />
+<p class="field-help">PDF, PNG or JPEG · 8 MB maximum. Downloads do not open an inline preview.</p>
+<label for="evidence-description">Description (optional)</label><input id="evidence-description" name="Description" maxlength="500" placeholder="What this record supports, without unnecessary personal details" />
+<label class="check-row consent"><input type="checkbox" name="EvidenceConsent" value="true" required /><span>I have permission to retain this file for casework and reviewed it for unnecessary personal information.</span></label>
+<button class="button secondary" type="submit">Retain supporting file →</button>
+</form>
+}
+<p class="evidence-footnote small muted">File signatures and integrity hashes help identify format and changes. They do not establish authenticity, scan for malware or prove resolution. Compare the file with the original complaint and cite its file ID or an authorised external record in the closure review.</p>
+</section>

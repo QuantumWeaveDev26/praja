@@ -1,0 +1,19 @@
+@model Praja.Web.Pages.Grievances.NewModel
+<section class="panel media-panel">
+    <p class="media-intro">Maximum file size: 8 MB. Text PDFs and text files are processed locally. Images and audio go to the configured intake service after consent. These intake files are not saved with the case.</p>
+    <div class="media-grid">
+        <div class="media-option" data-capture-panel="Document"><h3>Upload a petition</h3><p class="small muted">Use PDF, text, PNG or JPEG. Image OCR: @(Model.OcrConfigured ? "configured; review extracted text" : "not connected"). For a scanned PDF, upload a clear image instead.</p>
+            <label asp-for="Document">Petition file</label><input asp-for="Document" type="file" accept=".pdf,.txt,.png,.jpg,.jpeg" form="intake-form" />
+            <button class="button secondary" type="submit" form="intake-form" asp-page-handler="Document" formnovalidate>Extract petition text →</button>
+            <button class="button secondary" type="button" id="document-clear">Clear document</button>
+        </div>
+        <div class="media-option" data-capture-panel="Voice" id="voice-intake" data-speech-configured="@Model.SpeechConfigured.ToString().ToLowerInvariant()"><h3>Record or upload audio</h3><p class="small muted">Record up to two minutes, then stop and select Transcribe audio. Or upload WAV, MP3, WebM or Ogg. Speech service: @(Model.SpeechConfigured ? "configured; review every transcript" : "not connected — local preview only").</p>
+            <div class="record-controls"><button type="button" class="button secondary" id="record-start">◉ Record voice</button><button type="button" class="button secondary" id="record-stop" disabled>Stop recording</button><button type="button" class="button secondary" id="record-clear" disabled>Clear audio</button><span id="record-state" class="small muted" role="status">Microphone starts only when you choose Record.</span></div>
+            <audio id="record-preview" controls hidden aria-label="Review the recorded complaint"></audio>
+            <label asp-for="Audio">Audio file</label><input asp-for="Audio" type="file" accept=".wav,.mp3,.webm,.ogg" form="intake-form" />
+            <button class="button secondary" type="submit" form="intake-form" asp-page-handler="Audio" id="transcribe-audio" formnovalidate>Transcribe audio →</button>
+        </div>
+    </div>
+    <div class="notice vertical" id="media-intake-status" role="status" aria-live="polite" hidden></div>
+    @if (Model.IntakeNotice is not null) { <div class="notice vertical" role="status"><strong>Text is ready for review.</strong><p>@Model.IntakeNotice</p></div> }
+</section>

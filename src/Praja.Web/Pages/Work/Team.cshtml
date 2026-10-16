@@ -1,0 +1,19 @@
+@page
+@model Praja.Web.Pages.Work.TeamModel
+@{ViewData["Title"]="Manage officers";}
+<a href="/Work">Back to team casework</a><h1>Manage officers</h1>
+<section class="panel form-panel"><h2>Create a staff account</h2><p>Give each person their own account. Department officers see only complaints assigned to them. Contractors see only their assigned field work. Reviewers check completed work.</p><form method="post"><div asp-validation-summary="All" class="validation"></div><label asp-for="Name">Name</label><input asp-for="Name" required maxlength="100"/><label asp-for="Email">Email</label><input asp-for="Email" type="email" required/><label asp-for="Password">Temporary password (14–128 characters)</label><input name="Password" type="password" required minlength="14" maxlength="128" autocomplete="new-password"/><label asp-for="Role">Role</label><select asp-for="Role"><option value="Intake">Intake officer</option><option value="Department">Department officer</option><option value="Reviewer">Reviewer</option><option value="Contractor">Contractor / field worker</option></select><label asp-for="Department">Department (for department officers and contractors)</label><select asp-for="Department">@foreach(var d in CaseRules.Departments.Where(d=>d.Key!="review")){<option value="@d.Key">@d.Value</option>}</select><button class="button primary">Create account</button></form></section>
+<section class="panel form-panel"><h2>Officers</h2><p>Changes revoke existing sign-in sessions. Reassign open cases before disabling an officer or changing their role or department. Accounts and case history are retained.</p>
+@foreach(var officer in Model.Officers){var role=Model.Roles.GetValueOrDefault(officer.Id);var roleName=role?.Role??(officer.BootstrapSlot==1?"Admin":"Intake");
+<details class="panel form-panel"><summary><strong>@officer.Name</strong> · @roleName · @(officer.IsDisabled?"Disabled":"Active")</summary><p>@officer.Email</p>
+@if(officer.BootstrapSlot!=1&&officer.Id!=User.OwnerId()){
+<form method="post" asp-page-handler="Manage"><input name="Target" type="hidden" value="@officer.Id"/><input name="Version" type="hidden" value="@officer.AccountVersion"/>
+<label>Name<input name="Name" value="@officer.Name" maxlength="100"/></label><label>Email<input name="Email" type="email" value="@officer.Email" maxlength="200"/></label>
+<label>Role<select name="Role">@foreach(var r in new[]{"Intake","Department","Reviewer","Contractor"}){<option value="@r" selected="@(r==roleName)">@r</option>}</select></label>
+<label>Department<select name="Department"><option value="">Not applicable</option>@foreach(var d in CaseRules.Departments.Where(d=>d.Key!="review")){<option value="@d.Key" selected="@(d.Key==role?.Department)">@d.Value</option>}</select></label>
+<label>New password (only for reset)<input name="Password" type="password" minlength="14" maxlength="128" autocomplete="new-password"/></label><p>Give the temporary password privately to the officer. They must replace it at their next sign-in before accessing casework. It is never displayed after saving.</p>
+<label>Reason for change<input name="Reason" required minlength="5" maxlength="300"/></label>
+<button name="Action" value="Edit" class="button primary">Save profile and role</button><button name="Action" value="Reset" class="button secondary">Reset password and unlock</button><button name="Action" value="@(officer.IsDisabled?"Enable":"Disable")" class="button secondary">@(officer.IsDisabled?"Enable account":"Disable account")</button></form>
+}else{<p>Protected workspace administrator.</p>}
+</details>}
+</section><section class="panel form-panel"><h2>Recent account changes</h2><ul>@foreach(var entry in Model.Audit){<li>@entry.AtUtc.ToString("dd MMM yyyy HH:mm") UTC · @(Model.Officers.FirstOrDefault(o=>o.Id==entry.ActorId)?.Name??"Administrator") · @(Model.Officers.FirstOrDefault(o=>o.Id==entry.TargetId)?.Name??"Officer"): @entry.Action</li>}</ul></section>

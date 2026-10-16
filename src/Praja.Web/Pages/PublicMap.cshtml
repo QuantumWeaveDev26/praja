@@ -1,0 +1,38 @@
+@page
+@model Praja.Web.Pages.PublicMapModel
+@{ ViewData["Title"] = "Nearby complaints"; }
+<link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="/css/public-map.css" asp-append-version="true" />
+<div id="public-map-page">
+<span class="eyebrow">PUBLIC COMPLAINT MAP</span>
+<h1>See what is being fixed nearby.</h1>
+<p>Explore shared complaints and their current progress. Locations are rounded to about 1 km; pins do not identify an exact building. Only complaints whose submitters agreed to public map sharing appear.</p>
+<p>For work awaiting citizen confirmation or marked closed, choose <strong>Check completed work</strong> on its card to report whether it is fixed. Nearby reports help staff review the result; they do not replace the complainant's approval.</p>
+<p><a href="/Submit">Submit a complaint</a> · <a href="/Track">Track my private complaint</a> · <a href="/Transparency">View service totals</a></p>
+<section class="panel form-panel" aria-labelledby="map-filter-heading">
+<h2 id="map-filter-heading">Find complaints</h2>
+<div class="map-filters">
+<div><label for="map-service">Service</label><select id="map-service"><option value="">All services</option></select></div>
+<div><label for="map-stage">Progress</label><select id="map-stage"><option value="">All stages</option><option value="Registered">Received</option><option value="Assigned">Assigned</option><option value="InProgress">Work in progress</option><option value="OfficerReview">Officer review</option><option value="Verification">Verification</option><option value="CitizenConfirmation">Awaiting citizen confirmation</option><option value="Closed">Closed</option></select></div>
+<div><label for="map-radius">Distance from selected location</label><select id="map-radius"><option value="">All shared locations</option><option value="5">Within 5 km</option><option value="10">Within 10 km</option><option value="25">Within 25 km</option><option value="50">Within 50 km</option></select></div>
+</div>
+<p>Your search location stays in this browser. Praja does not send it to its server. Distance estimates use rounded complaint locations.</p>
+<div class="map-actions"><button type="button" class="button" id="map-locate">Use my location</button><button type="button" class="button" id="map-clear-location">Clear search location</button><button type="button" class="button" id="map-refresh">Refresh complaints</button></div>
+<p id="map-location-status" role="status" aria-live="polite">No search location selected.</p>
+<details><summary>Enter a location manually</summary><p>If device location is unavailable, enter coordinates for the area you want to search.</p><div class="map-filters"><div><label for="map-latitude">Latitude (−90 to 90)</label><input id="map-latitude" type="number" step="any" min="-90" max="90" /></div><div><label for="map-longitude">Longitude (−180 to 180)</label><input id="map-longitude" type="number" step="any" min="-180" max="180" /></div></div><button type="button" class="button" id="map-set-location">Use these coordinates</button></details>
+</section>
+<p id="map-status" role="status" aria-live="polite">Loading shared complaints…</p>
+<p id="map-limit" class="map-notice" hidden></p>
+<section aria-label="Complaint locations" class="panel form-panel">
+<h2>Complaint locations</h2><p id="map-mode">The geographic overview below works without an external map. Select a complaint in the list for its location.</p>
+<div class="map-actions"><button type="button" class="button" id="map-load-tiles">Load street map</button></div>
+<p>Optional street maps come from OpenStreetMap. Loading them shares your IP address and the displayed map area with that service. The complaint list works without street maps.</p>
+<div id="complaint-map" aria-label="Approximate complaint locations"></div>
+<p class="map-legend"><span class="map-key map-key-open"></span> Open work <span class="map-key map-key-review"></span> Review or citizen confirmation <span class="map-key map-key-closed"></span> Closed</p>
+<p>Progress: Received → Assigned → Work in progress → Officer review (when a contractor is involved) → Verification → Citizen confirmation → Closed. Returned work moves back to work in progress.</p>
+</section>
+<section aria-labelledby="map-results-heading"><h2 id="map-results-heading">Shared complaints</h2><ul id="map-results" class="map-results"></ul></section>
+<noscript><p>Enable JavaScript to load the map and complaint list. You can still use the <a href="/Transparency">public progress totals</a>.</p></noscript>
+</div>
+<script src="/vendor/leaflet/leaflet.js" defer></script>
+<script src="/js/public-map.js" asp-append-version="true" defer></script>

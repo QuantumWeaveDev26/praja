@@ -1,0 +1,62 @@
+@page "{id:guid}"
+@model Praja.Web.Pages.Grievances.DetailsModel
+@{ ViewData["Title"] = Model.Case.Reference; var item = Model.Case; var step = Array.IndexOf(CaseRules.Statuses, item.Status); }
+<a href="/Grievances" class="back-link">← Back to casework</a><div class="page-heading"><div><span class="eyebrow">@item.Reference @if (item.IsSample) { <span class="sample-label">FICTIONAL SAMPLE</span> }</span><h1 class="case-heading">@item.Title</h1><p class="muted">@item.Location · @item.District <span class="divider">/</span> @item.Language <span class="divider">/</span> @item.Source</p></div><span class="badge @item.Status.ToLowerInvariant()">@CaseRules.StatusLabel(item.Status)</span></div>
+<ol class="workflow-steps" aria-label="Case progress">@for (var i = 0; i < CaseRules.Statuses.Length; i++) { <li class="@(i <= step ? "complete" : "")"><span>@(i < step ? "✓" : (i + 1).ToString())</span>@CaseRules.StatusLabel(CaseRules.Statuses[i])</li> }</ol>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+@if(item.Status!="Draft"){<section class="panel action-panel"><div><h2>Department and citizen workflow</h2><p>Assign an officer, track progress, verify completion evidence and request citizen confirmation.</p></div><a class="button primary" href="/Work/Case/@item.Id">Open team casework</a></section>}
+<section class="panel action-panel"><div><h2>Case briefing</h2><p class="muted">Source-linked excerpts from the complaint, resolution, recent history and selected supporting documents.</p></div><a class="button secondary" href="/Grievances/Brief/@item.Id">Prepare briefing</a></section>
+<partial name="_RoutingContext" model="Model" />
+@if(Model.InboxSource is { } source){<div class="notice vertical"><strong>Incoming source retained.</strong><p><a href="/Intake/Details/@source.Id">Review the original inbox message and source references</a> · @source.Channel · Captured @source.ReceivedUtc.ToString("dd MMM yyyy, HH:mm") UTC</p></div>}
+@if (item.Status != "Draft")
+{
+    <section class="panel access-panel"><span class="eyebrow">CITIZEN FOLLOW-THROUGH</span><h2>A private way to check progress.</h2><p>Issue a seven-day access code for this case. The citizen can use it on <a class="text-link" href="/Citizen">Citizen assistance</a> to see the reference, title, service and status. Original statements and evidence remain private. Anyone holding the code can see that limited summary; share it only with the citizen concerned.</p>
+    @if (Model.IssuedAccess is { } access)
+    {
+        <label for="citizen-access-code">Private access code · select and copy</label><textarea id="citizen-access-code" class="access-code" readonly rows="4" autocomplete="off" spellcheck="false">@access.Code</textarea><p class="field-help">Expires @access.ExpiresUtc.ToString("dd MMM yyyy, HH:mm") UTC. This is local workspace access, not an IPGRS login. Codes are not stored in case history; existing codes remain valid until expiry.</p>
+    }
+    <form method="post" asp-page-handler="Share" data-busy><input asp-for="Version" type="hidden" /><button class="button secondary" type="submit">Issue citizen status code →</button></form>
+    </section>
+}
+<div class="detail-grid"><div><section class="panel source-panel"><div class="panel-heading"><div><span class="eyebrow">THE SOURCE OF TRUTH</span><h2>Citizen’s original statement</h2></div><span class="small muted">Preserved original</span></div><blockquote class="original-text" lang="@(item.Language == "Kannada" ? "kn" : "en")">@item.OriginalText</blockquote></section>
+@if (item.Status == "Draft")
+{
+<section class="panel form-panel">
+<div class="section-title"><span class="step-number">02</span><div><h2>Review and register</h2><p class="muted small">@item.DraftMethod</p></div></div>
+<form method="post" asp-page-handler="Register" data-busy>
+    <input asp-for="Version" type="hidden" />
+    <label asp-for="Title">Grievance title</label><input asp-for="Title" required minlength="5" maxlength="160" />
+    <label asp-for="DraftText">Complaint draft</label><textarea asp-for="DraftText" rows="8" required minlength="20" maxlength="8000"></textarea>
+    <p class="field-help">Compare with the original. Correct omissions, mistranslation or unsupported details.</p>
+    <label asp-for="Department">Pilot department / service</label><select asp-for="Department" required>@foreach(var dept in CaseRules.Departments){<option value="@dept.Key">@dept.Value</option>}</select>
+    <partial name="_RoutingChoices" model="Model" />
+    <label class="check-row consent"><input asp-for="Reviewed" required /><span>I reviewed the draft with the citizen or original statement and confirmed the service, category and issue.</span></label>
+    <div class="form-actions"><span class="small muted">Registers locally; government connection is a future stage.</span><button class="button primary" type="submit">Confirm registration →</button></div>
+</form></section>
+}
+else
+{
+<section class="panel"><div class="panel-heading"><div><span class="eyebrow">OFFICER-CONFIRMED RECORD</span><h2>Registered complaint</h2></div></div><p class="document-text">@item.DraftText</p></section>
+}
+<partial name="_Evidence" model="Model" />
+@if (item.Status == "Registered")
+{
+<section class="panel action-panel"><div><h2>Ready for officer action.</h2><p class="muted">Start casework to record the department’s response and supporting evidence.</p></div><form method="post" asp-page-handler="Start" data-busy><input asp-for="Version" type="hidden" /><button class="button primary">Start casework →</button></form></section>
+}
+@if (item.Status is "InProgress" or "ClosureReview")
+{
+<section class="panel form-panel"><div class="section-title"><span class="step-number">04</span><div><h2>Resolution report and feedback</h2><p class="muted small">Record what was done and how it was checked.</p></div></div><form method="post" asp-page-handler="Review" data-busy><input asp-for="Version" type="hidden" /><label asp-for="ResolutionReport">Department’s resolution report</label><textarea asp-for="ResolutionReport" rows="6" required minlength="20" maxlength="6000" placeholder="Describe the action taken, the date or inspection, and how it addresses the citizen’s concern."></textarea><label asp-for="EvidenceReference">Supporting evidence reference</label><input asp-for="EvidenceReference" maxlength="500" placeholder="Inspection record, document ID or authorised evidence reference" /><p class="field-help">Cite an attached file ID or an authorised external record. Supporting files still require officer review.</p><label asp-for="CitizenFeedback">Citizen feedback recorded by officer</label><select asp-for="CitizenFeedback"><option value="Pending">Awaiting citizen confirmation</option><option value="Confirmed">Citizen confirmed resolution</option><option value="Disagreed">Citizen says the issue remains</option></select><div class="form-actions"><span class="small muted">Checklist results require officer judgment.</span><button class="button primary">@(item.Status == "ClosureReview" ? "Update review" : "Prepare closure review") →</button></div></form></section>
+}
+@if (item.Status == "ClosureReview")
+{
+<section class="panel review-panel"><div class="panel-heading"><div><span class="eyebrow">DOCUMENT CHECKLIST · LOCAL RULES</span><h2>@(Model.Assessment.CanClose ? "Ready for your final review." : "A few things need a closer look.")</h2></div><span class="badge @(Model.Assessment.CanClose ? "closed" : "closurereview")">@(Model.Assessment.CanClose ? "Checklist complete" : "Review needed")</span></div>
+@if (!Model.Assessment.CanClose) { <ul class="flag-list">@foreach (var flag in Model.Assessment.Flags) { <li><span>!</span>@flag</li> }</ul> } else { <p class="document-text">A detailed report, evidence reference and positive citizen feedback are recorded. Confirm that the evidence genuinely supports closure.</p> }
+<div class="notice vertical"><strong>Checklist completion is not independent verification.</strong><p>These checks cannot establish whether a real-world issue was fixed or whether the referenced evidence is authentic.</p></div>
+@if (Model.Assessment.CanClose) { <form method="post" asp-page-handler="Close" data-busy><input asp-for="Version" type="hidden" /><label class="check-row consent"><input asp-for="Reviewed" required /><span>I reviewed the original complaint, supporting evidence and citizen feedback, and approve closing this local case.</span></label><button class="button primary">Approve local closure ✓</button></form> }
+</section>
+}
+@if (item.Status == "Closed")
+{
+<section class="panel"><div class="panel-heading"><div><span class="eyebrow">OFFICER-APPROVED LOCAL CLOSURE</span><h2>Resolution on record</h2></div><span class="badge closed">Closed</span></div><p class="document-text">@item.ResolutionReport</p><dl class="record-details"><dt>Evidence reference</dt><dd>@item.EvidenceReference</dd><dt>Citizen feedback</dt><dd>@item.CitizenFeedback</dd><dt>Closed</dt><dd>@item.ClosedUtc?.ToString("dd MMM yyyy, HH:mm") UTC</dd></dl></section>
+}
+</div><aside><section class="panel case-meta"><span class="eyebrow">CASE AT A GLANCE</span><h2>Case details</h2><dl><dt>Service</dt><dd>@CaseRules.Departments[item.Department]</dd><dt>Intake channel</dt><dd>@item.Source</dd><dt>Drafting method</dt><dd>@item.DraftMethod</dd><dt>Created</dt><dd>@item.CreatedUtc.ToString("dd MMM yyyy, HH:mm") UTC</dd><dt>IPGRS status</dt><dd><span class="connection-state">Not connected</span></dd></dl><div class="review-note"><p>@(item.DraftMethod.StartsWith("AI") ? "AI-prepared summary" : "Source excerpt")</p><p>@item.Summary</p></div></section><section class="panel timeline-panel"><span class="eyebrow">AUDIT HISTORY</span><h2>Case activity</h2><ol class="timeline">@foreach (var entry in item.History.OrderByDescending(h => h.AtUtc)) { <li><strong>@entry.Actor</strong><p>@entry.Action</p><time>@entry.AtUtc.ToString("dd MMM, HH:mm") UTC</time></li> }</ol></section></aside></div>

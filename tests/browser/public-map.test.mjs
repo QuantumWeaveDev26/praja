@@ -1,0 +1,14 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import fs from 'node:fs';
+const source=fs.readFileSync('src/Praja.Web/wwwroot/js/public-map.js','utf8');
+const context={};vm.runInNewContext(source,context);const api=context.PrajaPublicMap;
+const row=(reference,lat,lon,stage='Registered',department='water')=>({reference,approximateLatitude:lat,approximateLongitude:lon,stage,department,updatedDate:'2026-10-16'});
+test('nearby filtering measures distance and retains only selected service and stage',()=>{const rows=[row('near',12.97,77.59),row('far',13.97,77.59),row('closed',12.97,77.59,'Closed'),row('other',12.97,77.59,'Registered','roads')];const result=api.select(rows,{center:{lat:12.97,lon:77.59},radius:5,stage:'Registered',service:'water'});assert.equal(result.length,1);assert.equal(result[0].reference,'near');assert.equal(result[0].distance,0);});
+test('distance supports international date line and excludes invalid coordinates',()=>{assert.ok(api.distance({lat:0,lon:179.99},{lat:0,lon:-179.99})<3);assert.equal(api.select([row('bad',91,0),row('nan',NaN,0),row('ok',0,0)],{}).length,1);assert.equal(api.validPoint('12',77),false);assert.equal(api.validPoint(0,0),true);});
+test('radius without selected location returns no guessed nearby results',()=>{assert.equal(api.select([row('one',12,77)],{radius:10}).length,0);});
+test('geolocation asks only on request; denied permission preserves manual fallback',()=>{let requested=0,status='',value;const geo={getCurrentPosition(success,fail){requested++;fail({code:1});}};const loc=api.locationController(geo,v=>value=v,s=>status=s);assert.equal(requested,0);loc.request();assert.equal(requested,1);assert.match(status,/denied/);assert.equal(value,undefined);assert.equal(loc.set(12,77),true);assert.equal(value.lat,12);});
+test('clearing or manually setting location invalidates outstanding GPS callback',()=>{let success,value;const loc=api.locationController({getCurrentPosition(cb){success=cb;}},v=>value=v,()=>{});loc.request();loc.clear();success({coords:{latitude:12,longitude:77}});assert.equal(value,null);loc.request();loc.set(14,76);success({coords:{latitude:12,longitude:77}});assert.equal(value.lat,14);});
+test('invalid manual coordinates do not overwrite previous search center',()=>{let value;const loc=api.locationController(null,v=>value=v,()=>{});loc.set(12,77);assert.equal(loc.set(NaN,77),false);assert.equal(value.lat,12);assert.equal(loc.set(12,181),false);});
+test('public map never builds complaint HTML or stores viewer coordinates',()=>{assert.doesNotMatch(source,/innerHTML|localStorage|sessionStorage|sendBeacon/);assert.match(source,/textContent/);assert.match(source,/map-load-tiles'\)\.addEventListener\('click'/);assert.equal((source.match(/root\.fetch\(/g)||[]).length,1);assert.match(source,/fetch\('\/PublicMap\?handler=Data'/);});

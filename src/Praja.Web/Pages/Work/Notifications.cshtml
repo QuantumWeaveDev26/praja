@@ -1,0 +1,12 @@
+@page
+@model Praja.Web.Pages.Work.NotificationsModel
+@{ViewData["Title"]="Notifications";}
+<div class="page-heading"><div><span class="eyebrow">YOUR WORK QUEUE</span><h1>Notifications</h1><p>Case updates, deadline reminders and escalations for your account.</p></div><a href="/Work" class="button secondary">Team casework</a></div>
+@if(Model.Notice is not null){<div class="notice" role="status">@Model.Notice</div>}
+<section class="panel form-panel"><h2>Deadline rules</h2><p>Reminder on the target date; overdue alert after 1 day; escalation after 3 days; urgent escalation after 7 days. Dates use UTC. Checks run every minute while the app runs. Each milestone is sent once per case, stage and target date.</p><p>Admin and intake receive escalations. Assigned officers receive case alerts; reviewers also receive alerts during verification. Citizens see updates in private tracking. Awaiting citizen response never closes a case automatically. These are in-app alerts; no email or SMS is sent.</p>
+<h3>Waiting for first assignment</h3><p>Registered complaints without a department officer receive a reminder after 24 hours, escalation after 3 days and urgent escalation after 7 days. Admin/intake must review and assign them. Each milestone is sent once; after downtime only the current milestone is sent. Assignment stops this timer. Registration time is used when recorded; older records use creation time. These are prototype rules, not official service deadlines.</p>
+@if(Model.CanCheck){<form method="post" asp-page-handler="Check"><button class="button secondary">Check deadlines now</button></form><a class="button secondary" href="/Work?filter=Unassigned">Review unassigned complaints</a>}</section>
+<section class="panel form-panel"><h2>Your latest alerts</h2><p>Unread first, up to 100 alerts. Refresh to see new arrivals. Marking read does not resolve the complaint.</p>
+@if(Model.Alerts.Count==0){<p>No notifications yet. New workflow actions and deadline milestones will appear here.</p>}
+@foreach(var alert in Model.Alerts){<article class="workflow-card"><strong>@alert.Severity · @(alert.ReadUtc is null?"Unread":"Read")</strong><p>@alert.Message</p><p><time>@alert.CreatedUtc.ToString("dd MMM yyyy HH:mm") UTC</time></p><a class="button secondary" href="/Work/Case/@alert.CaseId">Open case</a>@if(alert.ReadUtc is null){<form method="post" asp-page-handler="Read"><input type="hidden" name="id" value="@alert.Id"/><button class="button secondary">Mark read</button></form>}</article>}
+</section>

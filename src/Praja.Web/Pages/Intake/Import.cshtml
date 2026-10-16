@@ -1,0 +1,34 @@
+@page
+@model Praja.Web.Pages.Intake.ImportModel
+@{ ViewData["Title"] = "Import messages"; }
+<a class="back-link" href="/Intake">← Intake inbox</a>
+<div class="page-heading"><div><span class="eyebrow">CHANNEL IMPORT DEMO</span><h1>Import incoming messages.</h1><p class="muted">Bring email, field reports and social posts into one review inbox.</p></div></div>
+<div class="notice vertical"><strong>Review before registration.</strong><p>Import saves messages locally. Source links are references only; no mailbox or social platform is contacted. Local category hints use keywords. AI remains available when you prepare a draft with consent.</p></div>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+@if (Model.Results is { } results)
+{
+    <section class="panel form-panel import-results" role="status"><span class="eyebrow">IMPORT COMPLETE</span><h2>@results.Count(r => r.Created) new · @results.Count(r => !r.Created) already saved</h2><p class="muted">Messages are ready for review. No complaint was registered.</p><ul class="plain-list">@foreach (var result in results) { <li><a class="text-link" href="/Intake/Details/@result.Message.Id">@result.Message.Channel · @result.Message.ExternalId · @(result.Created ? "New message" : "Existing message")</a></li> }</ul><a class="button primary" href="/Intake">Open review inbox</a></section>
+}
+@if (Model.Rows.Count > 0)
+{
+    <section class="panel form-panel"><div class="panel-heading"><div><span class="eyebrow">STEP 2 · CHECK THE PREVIEW</span><h2>@Model.Rows.Count messages to review</h2></div></div><p class="muted">Category hints are suggestions. Matching wording can describe the same issue; compare it before creating another case. Already saved source IDs retain their first message and review state.</p>
+    <div class="import-preview">@foreach (var row in Model.Rows) {
+        <article class="import-message"><div class="panel-heading"><h3>Message @row.Number · @row.Message.Channel</h3><span class="badge draft">@(row.ExistingId.HasValue ? "Already saved" : row.RepeatedSource ? "Repeated in batch" : "New message")</span></div>
+        @if (InboxImportService.IsDemoSample(row.Message)) { <p class="sample-label">Fictional sample</p> }
+        <blockquote class="original-text">@row.Message.OriginalText</blockquote>
+        <dl class="record-details"><dt>Source message ID</dt><dd>@row.Message.ExternalId</dd><dt>Language</dt><dd>@row.Message.Language</dd><dt>Source link</dt><dd>@(row.Message.SourceUrl.Length == 0 ? "Not supplied" : row.Message.SourceUrl)</dd><dt>Suggested service</dt><dd>@CaseRules.Departments[row.Route.Department]</dd><dt>Demo category / issue</dt><dd>@PilotRoutingCatalog.CategoryLabel(row.Route.Category) / @PilotRoutingCatalog.IssueLabel(row.Route.Subcategory)</dd></dl>
+        <p class="field-help">Local keyword hints · Officer confirmation required</p>
+        @if (row.ExistingId is { } existing) { <p><a class="text-link" href="/Intake/Details/@existing">Review the saved message</a></p> }
+        @if (row.BatchMatches > 0) { <p class="notice">Matching wording in @row.BatchMatches other batch message(s). Both source references will be retained.</p> }
+        @if (row.Matches.Count > 0) { <p class="field-help">Matching wording in saved records:</p><ul class="plain-list">@foreach (var match in row.Matches) { <li><a class="text-link" href="@(match.IsCase ? "/Grievances/Details/" : "/Intake/Details/")@match.Id">@match.Label</a></li> }</ul> }
+        </article>
+    }</div>
+    <form method="post" asp-page-handler="Import" data-busy><input asp-for="PreviewToken" type="hidden"/><label class="check-row consent"><input asp-for="Permission" required/><span>I reviewed this preview and confirm permission to retain these messages and source details in the local workspace.</span></label><div class="form-actions"><button class="button secondary" asp-page-handler="Edit" formnovalidate>Edit messages</button><button class="button primary">Confirm import</button></div><p class="field-help">Preview expires after 30 minutes. Editing requires a fresh preview.</p></form></section>
+}
+@if (Model.Rows.Count == 0)
+{
+<section id="import-source" class="panel form-panel"><span class="eyebrow">STEP 1 · ADD MESSAGES</span><h2>Paste a CSV batch</h2><p class="muted">Use up to 20 messages. Each needs a stable source ID; re-importing the same ID reuses its saved message. Different wording with the same ID stops the whole batch.</p>
+    <div class="import-sample-actions"><a class="button secondary" href="/Intake/Import?sample=demo">Load 3 fictional messages</a><a class="text-link" href="/Intake/Import?handler=Sample">Download sample CSV</a></div>
+    <form method="post" asp-page-handler="Preview" data-busy><label asp-for="Input.Csv">CSV messages</label><textarea asp-for="Input.Csv" rows="10" required maxlength="32768" spellcheck="false" aria-describedby="csv-format"></textarea><p id="csv-format" class="field-help">Columns: <code>channel,external_id,language,source_url,message</code>. Channels: Email, Field meeting, Social media. Language: English or Kannada. Quote messages containing commas or line breaks. Social posts require an HTTPS source link. Maximum 32,768 characters.</p><div class="form-actions"><span class="small muted">Preview does not save messages or contact AI.</span><button class="button primary">Preview messages</button></div></form>
+</section>
+}

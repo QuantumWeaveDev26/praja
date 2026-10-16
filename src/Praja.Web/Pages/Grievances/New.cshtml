@@ -1,0 +1,55 @@
+@page
+@model Praja.Web.Pages.Grievances.NewModel
+@{ ViewData["Title"] = "New complaint"; }
+<a href="/Grievances" class="back-link">← Back to casework</a>
+<div class="page-heading"><div><span class="eyebrow">NEW COMPLAINT</span><h1>Capture a complaint.</h1><p class="muted">Type, record or upload. Check the details, then review the draft before registering.</p></div><span class="badge draft">Capture and check · Review next</span></div>
+@if(Model.InboxId.HasValue){<div class="notice vertical"><strong>Source retained in the intake inbox.</strong><p>Original wording is preserved. Review location details here and edit the formal draft on the next screen. <a href="/Intake/Details/@Model.InboxId">Review source and matching complaints</a></p></div>}
+<div class="intake-grid">
+    <section class="panel form-panel">
+        <form method="post" asp-page="/Grievances/New" asp-page-handler="" id="intake-form" enctype="multipart/form-data" data-busy>
+            <div asp-validation-summary="All" class="validation" role="alert"></div>
+            <input asp-for="AnalysisToken" type="hidden" />
+            <input asp-for="InboxId" type="hidden"/><input asp-for="InboxVersion" type="hidden"/>@if(Model.InboxId.HasValue){<input asp-for="Input.Source" type="hidden"/>}
+            <label class="check-row consent"><input asp-for="Input.Consent" required /><span>I confirm that the citizen agreed to record and process this complaint. I will review suggestions and the draft before registration.</span></label>
+            @if(Model.InboxId is null)
+            {
+                <fieldset class="capture-choice"><legend>1. How do you want to capture the complaint?</legend><div class="capture-options">
+                    <label><input asp-for="CaptureMethod" id="capture-text" type="radio" value="Text"/><span><strong>Type complaint</strong><small>Write or paste the citizen’s words</small></span></label>
+                    <label><input asp-for="CaptureMethod" id="capture-voice" type="radio" value="Voice"/><span><strong>Voice recording</strong><small>Record or upload, then transcribe</small></span></label>
+                    <label><input asp-for="CaptureMethod" id="capture-document" type="radio" value="Document"/><span><strong>Upload document</strong><small>Extract text from a petition</small></span></label>
+                </div></fieldset>
+                <div id="capture-status" class="notice vertical" role="status" aria-live="polite" hidden></div>
+                <noscript><p class="muted">Voice and document tools are shown below. Browser recording needs JavaScript; uploaded audio can still be submitted.</p></noscript>
+                <partial name="_MediaIntake" model="Model" />
+            }
+            <div class="form-section">
+                <div class="section-title"><span class="step-number">02</span><div><h2>Check the complaint text</h2><p class="muted small">Review typed or extracted text. Include where the issue happened and the help needed.</p></div></div>
+                <div class="form-grid">
+                    <div><label asp-for="Input.Language">Draft language</label><select asp-for="Input.Language"><option>English</option><option>Kannada</option></select></div>
+                    <div><label asp-for="Input.Source">Intake channel</label><select asp-for="Input.Source" disabled="@Model.InboxId.HasValue"><option>Text</option><option>Email</option><option>Field meeting</option><option>Paper transcription</option><option>Document extraction</option><option>Voice transcript</option><option>Social media</option></select></div>
+                </div>
+                <label asp-for="Input.OriginalText">Original complaint <span class="label-hint">Required</span></label>
+                <textarea asp-for="Input.OriginalText" rows="8" readonly="@Model.InboxId.HasValue" required minlength="20" maxlength="6000" data-counter="complaint-count" placeholder="Describe what happened, where it happened, how long it has been happening, and what help is needed. ಕನ್ನಡದಲ್ಲೂ ಬರೆಯಬಹುದು."></textarea>
+                <div class="field-meta"><span>No names or contact details are required for this prototype.</span><span id="complaint-count">0 / 6,000</span></div>
+            </div>
+            <div class="form-actions"><span class="small muted">@(Model.AiConnected ? "Suggest details sends this text to the configured AI service. No case is created." : "Local keyword suggestions only. Enter location details manually.")</span><button class="button secondary" type="submit" asp-page-handler="Analyze" formnovalidate>Suggest details</button></div>
+            <partial name="_IntakeSuggestions" model="Model" />
+            <partial name="_FollowUpQuestions" model="Model" />
+            <div class="form-section">
+                <div class="section-title"><span class="step-number">03</span><div><h2>Check location and prepare the draft</h2><p class="muted small">This is the issue location. Suggestions fill empty fields only; add any missing details.</p></div></div>
+                <div class="form-grid">
+                    <div><label asp-for="Input.District">District</label><input asp-for="Input.District" list="districts" required minlength="2" maxlength="100" placeholder="e.g. Bengaluru Urban" /><datalist id="districts"><option>Bengaluru Urban</option><option>Bengaluru Rural</option><option>Mysuru</option><option>Dharwad</option><option>Ballari</option><option>Belagavi</option></datalist></div>
+                    <div><label asp-for="Input.Location">Ward / locality / village</label><input asp-for="Input.Location" required minlength="2" maxlength="200" placeholder="e.g. Ward 12, Main road" /></div>
+                </div>
+            </div>
+            <div class="form-actions"><span class="small muted">Check details above. Original text is preserved separately.</span><button class="button primary" id="prepare-draft" type="submit">Prepare draft <span>→</span></button></div>
+        </form>
+    </section>
+    <aside>
+        <section class="panel help-card"><span class="eyebrow">WHAT HAPPENS NEXT</span><h2>You review before registration.</h2><ol class="guidance-list"><li><strong>Capture the citizen’s words.</strong><span>Voice and document text appear in the complaint box for you to check.</span></li><li><strong>Use Suggest details.</strong><span>AI suggests the service and details found in the text. Missing facts stay blank.</span></li><li><strong>Prepare and review the draft.</strong><span>On the next screen, correct the draft and confirm the service before registering locally.</span></li></ol><div class="review-note"><p>This is an independent demo. Nothing is submitted to a government portal. Social media references can be added to the intake inbox; automatic monitoring is not connected.</p></div></section>
+        <div class="notice vertical"><strong>@(Model.AiConnected ? "AI assistance is configured" : "Structured template mode")</strong><p>@(Model.AiConnected ? "Suggest details and Prepare draft each use the configured AI service. Use only data approved for that service. Suggestions still need review." : "AI is not connected. Keyword routing and templates preserve the statement; location extraction and translation are unavailable.")</p></div>
+        <p class="muted small side-footnote">Review OCR and transcripts against the original. Offline capture and synchronisation are still pending.</p>
+    </aside>
+</div>
+
+

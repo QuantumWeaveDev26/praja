@@ -1,0 +1,59 @@
+@page
+@model Praja.Web.Pages.CommunityModel
+@{ ViewData["Title"] = "Check completed work"; }
+<span class="eyebrow">COMMUNITY FEEDBACK</span>
+<h1>Is the work actually finished?</h1>
+<p><a href="/PublicMap">← Back to nearby complaints</a></p>
+<div asp-validation-summary="All" class="validation" role="alert"></div>
+@if (Model.Submitted)
+{
+    <div class="notice" role="status">Your report was saved for staff review. Community reports do not automatically close or reopen a complaint.</div>
+}
+@if (Model.Case is {} item)
+{
+    <section class="panel form-panel">
+        <h2>@item.Reference</h2>
+        <p>@item.DepartmentLabel · <strong>@item.StageLabel</strong></p>
+        <p>Approximate complaint location: @item.ApproximateLatitude.ToString("F2"), @item.ApproximateLongitude.ToString("F2"). Map locations are rounded; check the actual work before responding.</p>
+        <h3>Unverified community reports for repair round @Model.BrowserFeedback.CurrentRound</h3>
+        <p><strong>@Model.Summary.Fixed</strong> report fixed · <strong>@Model.Summary.NotFixed</strong> report not fixed</p>
+        <p>Counts include only this repair round. Earlier reports remain in the case history. These observations are not verified votes or proof of completion. Comments are visible only to authorised staff.</p>
+    </section>
+    @if (Model.BrowserFeedback.PreviousRound is {} previousRound)
+    {
+        <p class="notice">This browser previously reported @(Model.BrowserFeedback.PreviousDecision=="Fixed"?"fixed":"not fixed") in repair round @previousRound. The complaint has been repaired and reviewed again. Inspect the latest work before sending a new report; your earlier report will remain unchanged.</p>
+    }
+    @if (Model.BrowserFeedback.HasCurrentReport)
+    {
+        <p class="notice">This browser has already reported on this repair round. You can report again if the complaint is reopened, repaired and reviewed again.</p>
+    }
+    @if (!Model.Submitted && !Model.BrowserFeedback.HasCurrentReport)
+    {
+        <form method="post" id="community-feedback-form" class="panel form-panel">
+            <input type="hidden" asp-for="Reference" />
+            <input type="hidden" asp-for="FeedbackRound" />
+            <h2>Tell us what you observed</h2>
+            <fieldset><legend>What did you find at the location?</legend>
+                <label><input type="radio" asp-for="Decision" id="community-fixed" value="Fixed" required /> The work is fixed</label>
+                <label><input type="radio" asp-for="Decision" id="community-not-fixed" value="NotFixed" required /> It is not fixed</label>
+            </fieldset>
+            <label asp-for="Note">Optional details for staff</label>
+            <textarea asp-for="Note" maxlength="500" rows="3" placeholder="Describe only what you observed. Do not include personal information."></textarea>
+            <p>Submit while within 1 km of the incident. Your browser-reported location helps check proximity; it does not verify your identity or prove that you inspected the work.</p>
+            <p>Your precise location is sent to Praja for this proximity check and is not retained. We allow one response per browser per repair round; this limit can be bypassed and is not identity verification.</p>
+            <label><input asp-for="Consent" required /> I inspected the work and agree to send my location for the proximity check and retain my report for staff review.</label>
+            <input type="hidden" name="Latitude" id="community-latitude" value="" />
+            <input type="hidden" name="Longitude" id="community-longitude" value="" />
+            <input type="hidden" name="Accuracy" id="community-accuracy" value="" />
+            <button type="button" id="community-locate" class="button secondary">Use my location</button>
+            <p id="community-location-status" role="status" aria-live="polite">Location has not been requested. Allow location access to send a nearby report.</p>
+            <button type="submit" id="community-submit" class="button primary" disabled>Send report for review</button>
+            <noscript><p>Enable JavaScript and location access to submit nearby community feedback.</p></noscript>
+        </form>
+    }
+}
+else
+{
+    <p>This complaint is not available for community feedback. Choose a publicly shared complaint awaiting citizen confirmation or marked closed.</p>
+}
+<script src="/js/community-feedback.js" asp-append-version="true" defer></script>
