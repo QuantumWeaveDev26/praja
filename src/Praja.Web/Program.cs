@@ -90,6 +90,9 @@ builder.Services.AddSingleton<GmailConfigurationStore>();
 builder.Services.AddHttpClient("X", client => client.Timeout = TimeSpan.FromSeconds(30)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
 builder.Services.AddSingleton<XConfigurationStore>();
 builder.Services.AddScoped<XCollectionService>();
+builder.Services.AddHttpClient("PublicSources", client => client.Timeout = TimeSpan.FromSeconds(30)).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false }).RemoveAllLoggers();
+builder.Services.AddSingleton<PublicSourceSettings>();
+builder.Services.AddScoped<PublicSourceCollection>();
 builder.Services.AddScoped<GmailService>();
 builder.Services.AddScoped<DraftingService>(); builder.Services.AddScoped<CaseService>();
 builder.Services.AddScoped<IntakeReviewService>();
@@ -194,7 +197,7 @@ app.Use(async (context,next)=>
         var path=context.Request.Path;
         if(role.Role is "Department" or "Reviewer" or "Contractor" && !path.StartsWithSegments("/Work") && !path.StartsWithSegments("/Track") && !path.StartsWithSegments("/Submit") && !path.StartsWithSegments("/Citizen") && !path.StartsWithSegments("/CitizenVoice") && !path.StartsWithSegments("/CitizenLogin") && !path.StartsWithSegments("/Transparency") && !path.StartsWithSegments("/PublicMap") && !path.StartsWithSegments("/PublicHistory") && !path.StartsWithSegments("/Community") && !path.StartsWithSegments("/Account") && !path.StartsWithSegments("/Error"))
         { if(context.Request.Method=="GET")context.Response.Redirect("/Work");else context.Response.StatusCode=403;return; }
-        if(role.Role=="Intake"&&(path.StartsWithSegments("/AiSettings")||path.StartsWithSegments("/GmailSettings")||path.StartsWithSegments("/XSettings")||path.StartsWithSegments("/Connections")||path.StartsWithSegments("/Automation")))
+        if(role.Role=="Intake"&&(path.StartsWithSegments("/AiSettings")||path.StartsWithSegments("/GmailSettings")||path.StartsWithSegments("/XSettings")||path.StartsWithSegments("/PublicSources")||path.StartsWithSegments("/Connections")||path.StartsWithSegments("/Automation")))
         {context.Response.StatusCode=403;return;}
     }
     await next();

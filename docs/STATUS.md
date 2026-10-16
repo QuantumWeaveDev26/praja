@@ -5,6 +5,11 @@ integration or production acceptance certificate.
 
 ## Implemented
 
+- On-demand YouTube metadata and Karnataka news/RSS intake at `/PublicSources`.
+  News feeds need no key; YouTube requires a local API key and quota. At most 10
+  matches per run enter the private inbox with attribution and source links; local
+  review and registration remain separate. Live YouTube access is not yet verified.
+
 - Citizen text and voice intake, incident photos and permission-based location
   capture; private tracking codes and citizen approval or dispute.
 - Offline text, incident photo and voice capture with bounded device storage, later synchronisation and duplicate protection. Voice is transcribed after reconnecting and requires citizen review before registration.

@@ -35,7 +35,7 @@ public class NewModel(CaseService cases, DraftingService drafting, MediaIntakeSe
         if(Input.OriginalText?.Trim()!=InboxItem.OriginalText)throw new InvalidOperationException("The inbox original is preserved. Edit the formal draft on the next screen.");
         Input.Source=InboxItem.Channel;
     }
-    public bool AiConnected => InboxItem?.CapturedBy != "X public search" && drafting.IsConnected;
+    public bool AiConnected => !PublicSourceCollection.UsesLocalReview(InboxItem?.CapturedBy) && drafting.IsConnected;
     public bool OcrConfigured => media.OcrConfigured;
     public bool SpeechConfigured => media.SpeechConfigured;
     public string? IntakeNotice { get; private set; }
@@ -68,8 +68,8 @@ public class NewModel(CaseService cases, DraftingService drafting, MediaIntakeSe
             if ((Input.FollowUpTimeline?.Length ?? 0) > 120 || (Input.FollowUpHelp?.Length ?? 0) > 500)
                 throw new InvalidOperationException("Keep follow-up answers within the displayed limits.");
             if (!Input.Consent) throw new InvalidOperationException("Confirm consent before suggesting details.");
-            Analysis = InboxItem?.CapturedBy == "X public search"
-                ? AutomationService.WithLocalQuotes(Input.OriginalText, DraftingService.LocalAnalysis(Input.OriginalText, "Local keyword routing · X source"))
+            Analysis = PublicSourceCollection.UsesLocalReview(InboxItem?.CapturedBy)
+                ? AutomationService.WithLocalQuotes(Input.OriginalText, DraftingService.LocalAnalysis(Input.OriginalText, "Local keyword routing · public source"))
                 : await drafting.AnalyzeAsync(Input.OriginalText, Input.Consent, HttpContext.RequestAborted);
             if (string.IsNullOrWhiteSpace(Input.District)) Input.District = Analysis.District;
             if (string.IsNullOrWhiteSpace(Input.Location)) Input.Location = Analysis.Location;

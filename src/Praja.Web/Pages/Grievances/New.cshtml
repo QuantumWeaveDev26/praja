@@ -5,7 +5,7 @@
 <div class="page-heading"><div><span class="eyebrow">NEW COMPLAINT</span><h1>Capture a complaint.</h1><p class="muted">Type, record or upload. Check the details, then review the draft before registering.</p></div><span class="badge draft">Capture and check · Review next</span></div>
 @if(Model.InboxId.HasValue){<div class="notice vertical"><strong>Source retained in the intake inbox.</strong><p>Original wording is preserved. Review location details here and edit the formal draft on the next screen. <a href="/Intake/Details/@Model.InboxId">Review source and matching complaints</a></p></div>}
 <div class="intake-grid">
-    @if(Model.InboxItem?.CapturedBy == "X public search"){<div class="notice">This X source uses local classification and a source-preserving template. External AI processing is not enabled for this intake.</div>}
+    @if(Praja.Web.Services.PublicSourceCollection.UsesLocalReview(Model.InboxItem?.CapturedBy)){<div class="notice">This public source uses local classification and a source-preserving template. External AI processing is not enabled for this intake.</div>}
     <section class="panel form-panel">
         <form method="post" asp-page="/Grievances/New" asp-page-handler="" id="intake-form" enctype="multipart/form-data" data-busy>
             <div asp-validation-summary="All" class="validation" role="alert"></div>
@@ -27,7 +27,7 @@
                 <div class="section-title"><span class="step-number">02</span><div><h2>Check the complaint text</h2><p class="muted small">Review typed or extracted text. Include where the issue happened and the help needed.</p></div></div>
                 <div class="form-grid">
                     <div><label asp-for="Input.Language">Draft language</label><select asp-for="Input.Language"><option>English</option><option>Kannada</option></select></div>
-                    <div><label asp-for="Input.Source">Intake channel</label><select asp-for="Input.Source" disabled="@Model.InboxId.HasValue"><option>Text</option><option>Email</option><option>Field meeting</option><option>Paper transcription</option><option>Document extraction</option><option>Voice transcript</option><option>Social media</option></select></div>
+                    <div><label asp-for="Input.Source">Intake channel</label><select asp-for="Input.Source" disabled="@Model.InboxId.HasValue"><option>Text</option><option>Email</option><option>Field meeting</option><option>Paper transcription</option><option>Document extraction</option><option>Voice transcript</option><option>Social media</option><option>News/RSS</option></select></div>
                 </div>
                 <label asp-for="Input.OriginalText">Original complaint <span class="label-hint">Required</span></label>
                 <textarea asp-for="Input.OriginalText" rows="8" readonly="@Model.InboxId.HasValue" required minlength="20" maxlength="6000" data-counter="complaint-count" placeholder="Describe what happened, where it happened, how long it has been happening, and what help is needed. ಕನ್ನಡದಲ್ಲೂ ಬರೆಯಬಹುದು."></textarea>

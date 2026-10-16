@@ -253,6 +253,15 @@ complaints created after an earlier closure. Existing period, district, service 
 sample filters apply. These private reports use local records and need no external
 credentials. See `docs/PERFORMANCE_ANALYTICS_TESTING.md` for definitions and limits.
 
+### YouTube and Karnataka news
+
+Open **Connections → YouTube and Karnataka news** (`/PublicSources`) as admin.
+Save a place-and-issue query and collect public feed headlines/excerpts without an
+API key, or configure a YouTube Data API v3 key for video metadata search. Each run
+handles up to 10 matches for private inbox review. No videos or full articles are
+downloaded and no cases are automatically registered. See
+[`docs/PUBLIC_SOURCE_INTAKE.md`](docs/PUBLIC_SOURCE_INTAKE.md) for setup and limits.
+
 ### X public-post collection
 
 Open **Connections → Configure X search** (`/XSettings`) as admin. Save an X app

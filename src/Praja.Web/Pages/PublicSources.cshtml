@@ -1,0 +1,36 @@
+@page
+@model PublicSourcesModel
+@using Praja.Web.Services
+@{ ViewData["Title"] = "YouTube and news intake"; }
+<a href="/Readiness" class="back-link">← Connections</a>
+<div class="page-heading"><div><span class="eyebrow">PUBLIC REPORTS</span><h1>Find reports on YouTube and in the news.</h1><p>Collect source titles, excerpts and links, then verify the issue and location in your intake inbox.</p></div></div>
+@if(Model.Notice is not null){<div class="notice">@Model.Notice</div>}
+<div asp-validation-summary="All" class="validation"></div>
+<section class="panel form-panel"><h2>1. Choose a place and issue</h2>
+<form method="post" asp-page-handler="Save" autocomplete="off">
+<input type="hidden" asp-for="Version"/>
+<label asp-for="Query">Search wording</label><input asp-for="Query" maxlength="200" required/>
+<p class="field-help">Try “Bengaluru water”, “Mysuru garbage” or “ಬೆಂಗಳೂರು ನೀರು”. News feeds match every space-separated word in the supplied headline and excerpt. Try alternate place names separately; this is not a GPS or statewide search.</p>
+<label for="youtube-key">YouTube Data API key (optional for news)</label><input id="youtube-key" name="ApiKey" type="password" autocomplete="new-password" maxlength="256"/>
+<p class="field-help">@(Model.KeyPresent ? "A key is saved. Leave blank to keep it." : "No YouTube key saved. You can collect news now.") Keys are encrypted locally and never displayed. Keep them out of screenshots and chat.</p>
+<button class="button primary">Save search settings</button></form></section>
+<section class="panel form-panel"><h2>2. Collect for review</h2>
+<p><strong>Saved query:</strong> @Model.Query</p><p><strong>Last result:</strong> @Model.Status</p>
+<form method="post" asp-page-handler="Collect"><input type="hidden" asp-for="Version"/>
+<label asp-for="Source">Source</label><select asp-for="Source">
+@foreach(var feed in PublicSourceCollection.Feeds){<option value="@feed.Id">@feed.Name</option>}
+<option value="youtube">YouTube · API key required</option></select>
+<p>News: checks up to 100 feed entries and handles at most 10 matching reports. Citizen Matters covers several cities; the query narrows its results. Excerpts may be shortened. Full articles and images are not downloaded.</p>
+<p>YouTube: one search for up to 10 recent videos published within 30 days. Only titles, channel names, dates, description excerpts and links are retained. Videos, transcripts and comments are not collected. Searches use your Google API quota.</p>
+<label class="check-row consent"><input asp-for="Permission" required/><span>Collect matching public-source metadata into my private review inbox, using API quota where applicable.</span></label>
+<button class="button primary">Collect once</button></form>
+<p class="field-help">Collection does not register cases, contact authors or publish to the public map. Repeated source IDs retain the first captured wording. Empty results can mean the feed has no matching recent items; they do not prove there are no complaints. Review processing uses local templates.</p>
+<a class="button secondary" href="/Intake">Review intake inbox →</a></section>
+<section class="panel form-panel"><h2>YouTube setup</h2><ol>
+<li>Open your Google Cloud project and enable <strong>YouTube Data API v3</strong>.</li>
+<li>In APIs &amp; Services → Credentials, create an API key. Restrict its API access to YouTube Data API v3. This app calls Google from the server, so browser referrer restrictions will not work.</li>
+<li>Paste the key above, save, then choose YouTube and collect once.</li></ol>
+<a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener noreferrer">Enable YouTube Data API v3</a>
+<p>News feeds are publisher reports, not direct citizen submissions. Confirm the original source, incident date, locality and whether the issue is still unresolved before preparing a case. Metadata alone does not establish a complaint.</p>
+@if(Model.KeyPresent){<form method="post" asp-page-handler="RemoveKey"><input type="hidden" asp-for="Version"/><button class="button secondary">Remove saved YouTube key</button></form>}
+</section>

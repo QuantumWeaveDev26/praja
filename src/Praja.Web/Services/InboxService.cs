@@ -9,7 +9,7 @@ namespace Praja.Web.Services;
 public sealed record InboxDuplicate(Guid Id, string Label, bool IsCase, string Reason = "Exact normalized wording");
 public partial class InboxService(WorkspaceDb db)
 {
-    public static readonly string[] Channels = ["Text", "Email", "Field meeting", "Paper transcription", "Document extraction", "Voice transcript", "Social media"];
+    public static readonly string[] Channels = ["Text", "Email", "Field meeting", "Paper transcription", "Document extraction", "Voice transcript", "Social media", "News/RSS"];
     public static string Fingerprint(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
         Regex.Replace(text.Normalize(NormalizationForm.FormKC).Trim(), @"\s+", " ").ToUpperInvariant())));
     public Task<InboxMessage?> FindAsync(Guid id, Guid owner, CancellationToken cancellation = default) =>
