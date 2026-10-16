@@ -18,6 +18,8 @@ integration or production acceptance certificate.
   Scanned/mixed PDFs use provider OCR; manual Gmail preview stays local with its 64 KiB limit.
   Unsupported parts send the whole message to manual review; transient failures
   remain retryable. Attachment binaries are not retained as case evidence.
+- Officer recovery of emails not detected as complaints: reference-only review list, explicit
+  recheck permission, mailbox-scoped retry, dismissal and duplicate protection.
 - Admin, intake, department, reviewer and contractor roles with scoped dashboards;
   account management, reassignment, cross-department transfer and mandatory
   first-login password changes.
@@ -33,8 +35,8 @@ integration or production acceptance certificate.
 
 ## Next work without new external credentials
 
-1. Representative complaint-detection evaluation and clearer handling of uncertain
-   or missed intake messages.
+1. Representative complaint-detection evaluation; missed-message recovery is implemented,
+   but keyword detection accuracy still needs a labelled representative dataset.
 2. Real-device offline media, microphone and storage eviction testing across target phones.
 3. Representative multilingual/media OCR evaluation and live scanned-email OCR accuracy evaluation.
 4. Recurrence/department-performance analytics and duplicate/paraphrase review.

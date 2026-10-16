@@ -39,6 +39,27 @@ public class IndexModel(AutomationStore store,AutomationService automation,Gmail
         finally{gate.Release();}
         return RedirectToPage();
     }
+    public Task<IActionResult> OnPostRecheckComplaintAsync(string messageId)=>ReviewNonComplaint(messageId,true);
+    public Task<IActionResult> OnPostDismissNonComplaintAsync(string messageId)=>ReviewNonComplaint(messageId,false);
+    private async Task<IActionResult> ReviewNonComplaint(string messageId,bool recheck)
+    {
+        if(!Allowed())return NotFound();
+        var owner=User.OwnerId();var gate=store.RunLock(owner);
+        if(!await gate.WaitAsync(0)){Notice="A collection run is active. Try again after it finishes.";return RedirectToPage();}
+        try
+        {
+            var account=gmail.Read(owner);var state=store.Read(owner);
+            if(!account.Connected||!state.NonComplaintReview.Any(r=>r.Mailbox==account.Mailbox&&r.MessageId==messageId))return NotFound();
+            if(recheck&&!Permission){Notice="Confirm that this email is a complaint and may be retained and processed before rechecking.";return RedirectToPage();}
+            var key=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(account.Mailbox)))[..24];
+            var external="gmail:"+key+":"+messageId;
+            store.Update(owner,s=>recheck?s with{ForcedReview=s.ForcedReview.Append(external).Distinct().TakeLast(50).ToArray()}:
+                s with{NonComplaintReview=s.NonComplaintReview.Where(r=>r.Mailbox!=account.Mailbox||r.MessageId!=messageId).ToArray(),ForcedReview=s.ForcedReview.Where(id=>id!=external).ToArray()});
+            Notice=recheck?"Queued for complaint preparation. Enable automation and choose Run now. Final registration still needs review.":"Review reference dismissed. The email remains in Gmail and will not be imported again automatically.";
+        }
+        finally{gate.Release();}
+        return RedirectToPage();
+    }
     public IActionResult OnPostPause(){if(!Allowed())return NotFound();store.Update(User.OwnerId(),s=>s with{Enabled=false,Policy=Guid.NewGuid(),Status="Paused. Prepared drafts and source messages remain available."});return RedirectToPage();}
     public async Task<IActionResult> OnPostRunAsync(){if(!Allowed())return NotFound();try{await automation.RunAsync(User.OwnerId(),HttpContext.RequestAborted);Notice="Collection finished. Review the prepared queue below.";}catch(InvalidOperationException ex){Notice=ex.Message;}return RedirectToPage();}
     public async Task<IActionResult> OnPostDemoAsync(){if(!Allowed())return NotFound();if(!Permission){Notice="Confirm permission to process the three fictional demo posts.";return RedirectToPage();}try{await automation.DemoAsync(User.OwnerId(),HttpContext.RequestAborted);Notice="Social demo finished. These are simulated posts, not live platform results.";}catch(Exception ex)when(ex is InvalidOperationException or IOException){Notice="Demo preparation could not finish. Retained messages remain in the intake inbox for retry.";}return RedirectToPage();}

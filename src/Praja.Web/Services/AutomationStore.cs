@@ -16,6 +16,8 @@ public sealed record AutomationState
     public string Status{get;init;}="Not started";
     public string[] Seen{get;init;}=[];
     public ManualMailReview[] ManualReview{get;init;}=[];
+    public ManualMailReview[] NonComplaintReview{get;init;}=[];
+    public string[] ForcedReview{get;init;}=[];
     public PreparedComplaint[] Prepared{get;init;}=[];
     public override string ToString()=>"Automation state (content redacted)";
 }

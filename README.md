@@ -233,3 +233,8 @@ A returned reference and private tracking code confirm registration. Failed requ
 Automatic Gmail intake processes scanned and mixed PDF attachments with the existing configured PDF-capable AI service. It inspects every page, sends the complete PDF when OCR is needed, includes page-marked text in complaint detection, and prepares likely complaints for officer review. No manual download/upload is required. Text PDFs remain local. Manual labelled-email preview remains local and does not invoke OCR.
 
 Automatic intake accepts up to three attachments, 8 MiB aggregate attachment bytes, 64 KiB per text attachment, 10 pages per PDF and 6,000 combined characters. PDFs may reach AI before complaint detection, including unrelated PDFs. Provider failures remain unseen for retry; malformed/unsupported attachments exclude the whole email. Attachment binaries are not stored as evidence. Existing source IDs prevent duplicate intake. Use **Retry skipped emails** on Automation for previously unsupported messages in the current mailbox, then **Run now**. Compare OCR with the source before registering.
+
+
+### Missed email complaints
+
+Automation lists the latest 50 references to emails not detected as complaints. Officers can read each original in Gmail, confirm processing permission and select **Recheck as complaint**. **Run now** then fetches the message directly and prepares it for review, bypassing only the local complaint keyword test. Size/content validation, mailbox scope and final registration review still apply. **Dismiss review reference** removes the reminder without changing Gmail. Unrelated email bodies and subjects are not retained in this list. See `docs/MISSED_EMAIL_REVIEW_TESTING.md` for limits and test coverage.

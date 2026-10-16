@@ -119,7 +119,7 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
         return new(await imports.PreviewAsync(owner,actor,csv,cancellation),notes);
     }
     private static string Csv(string text)=>"\""+text.Replace("\"","\"\"")+"\"";
-    public async Task<AutomationMailBatch> ReadInboxAsync(Guid owner,IReadOnlySet<string> seen,CancellationToken cancellation=default,Func<bool>? continueReading=null)
+    public async Task<AutomationMailBatch> ReadInboxAsync(Guid owner,IReadOnlySet<string> seen,CancellationToken cancellation=default,Func<bool>? continueReading=null,IReadOnlyList<string>? requestedMessageIds=null)
     {
         var current=settings.Read(owner);if(!current.Connected)throw new InvalidOperationException("Connect Gmail before enabling Inbox automation.");
         using var deadline=CancellationTokenSource.CreateLinkedTokenSource(cancellation);deadline.CancelAfter(TimeSpan.FromSeconds(90));
@@ -134,7 +134,7 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
         for(var number=0;number<5&&messages.Count+unsupported.Count+retryable<20;number++)
         {
             if(continueReading?.Invoke()==false||deadline.IsCancellationRequested)break;
-            using var list=await Get("messages?maxResults=20&q="+Uri.EscapeDataString("in:inbox -in:spam -in:trash")+(page.Length==0?"":"&pageToken="+Uri.EscapeDataString(page)),current.AccessToken,deadline.Token);
+            using var list=requestedMessageIds is not null ? JsonSerializer.SerializeToDocument(new { messages=requestedMessageIds.Take(20).Select(id=>new {id}).ToArray() }) : await Get("messages?maxResults=20&q="+Uri.EscapeDataString("in:inbox -in:spam -in:trash")+(page.Length==0?"":"&pageToken="+Uri.EscapeDataString(page)),current.AccessToken,deadline.Token);
             if(!list.RootElement.TryGetProperty("messages",out var entries))break;
             foreach(var entry in entries.EnumerateArray().Take(20))
             {
@@ -158,7 +158,7 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
                 if(plain is null||original.Trim().Length is <20 or >6000||original.Any(c=>char.IsControl(c)&&c is not ('\r' or '\n' or '\t'))){unsupported.Add(external);continue;}
                 messages.Add(new(external,original.Trim(),original.Any(c=>c is >= '\u0C80' and <= '\u0CFF')?"Kannada":"English","https://mail.google.com/mail/?authuser="+Uri.EscapeDataString(current.Mailbox)+"#all/"+id));
             }
-            if(!list.RootElement.TryGetProperty("nextPageToken",out var next))break;
+            if(requestedMessageIds is not null || !list.RootElement.TryGetProperty("nextPageToken",out var next))break;
             page=next.GetString()??"";if(page.Length is 0 or >2048||page.Any(char.IsControl))break;
         }
         if(settings.Read(owner).Version!=current.Version)throw new InvalidOperationException("Gmail settings changed during collection. Retry with the current connection.");

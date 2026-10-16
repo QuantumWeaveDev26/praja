@@ -30,16 +30,27 @@ public sealed class AutomationService(WorkspaceDb db,AutomationStore store,Gmail
             if(gmailSettings.Read(owner).Connected)
             {
                 if(policy.Mailbox!=gmailSettings.Read(owner).Mailbox)throw new InvalidOperationException("The connected mailbox changed. Enable automation again for the mailbox shown on this page.");
-                var batch=await gmail.ReadInboxAsync(owner,seen,cancellation,()=>Current(owner,policy.Policy));scanned=batch.Scanned;unsupported=batch.Unsupported.Count;retryable=batch.Retryable;
+                var mailboxKey=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(policy.Mailbox)))[..24];
+                var forced=policy.ForcedReview.Where(id=>id.StartsWith("gmail:"+mailboxKey+":",StringComparison.Ordinal)).Take(20).ToHashSet(StringComparer.Ordinal);
+                seen.ExceptWith(forced);
+                var batch=await gmail.ReadInboxAsync(owner,seen,cancellation,()=>Current(owner,policy.Policy),forced.Count>0?forced.Select(id=>id.Split(':').Last()).ToArray():null);scanned=batch.Scanned;unsupported=batch.Unsupported.Count;retryable=batch.Retryable;
                 foreach(var id in batch.Unsupported)seen.Add(id);
+                store.Update(owner,s=>s with{ForcedReview=s.ForcedReview.Except(batch.Unsupported).ToArray(),NonComplaintReview=s.NonComplaintReview.Where(r=>r.Mailbox!=policy.Mailbox||!batch.Unsupported.Contains("gmail:"+mailboxKey+":"+r.MessageId)).ToArray()});
                 store.Update(owner,s=>s with{ManualReview=s.ManualReview.Concat(batch.Unsupported.Select(id=>new ManualMailReview(policy.Mailbox,id.Split(':').Last()))).Distinct().TakeLast(50).ToArray()});
                 foreach(var mail in batch.Messages)
                 {
                     if(!Current(owner,policy.Policy))break;
-                    if(!LooksLikeComplaint(mail.Original)){seen.Add(mail.ExternalId);ignored++;continue;}
-                    await inbox.CaptureAsync(owner,"Automatic Gmail intake",mail.Original,"Email",mail.Language,mail.SourceUrl,mail.ExternalId,true,cancellation);
+                    if(!forced.Contains(mail.ExternalId)&&!LooksLikeComplaint(mail.Original))
+                    {
+                        seen.Add(mail.ExternalId);ignored++;
+                        store.Update(owner,s=>s with{NonComplaintReview=s.NonComplaintReview.Append(new ManualMailReview(policy.Mailbox,mail.ExternalId.Split(':').Last())).Distinct().TakeLast(50).ToArray()});
+                        continue;
+                    }
+                    await inbox.CaptureAsync(owner,forced.Contains(mail.ExternalId)?"Officer-requested Gmail recheck":"Automatic Gmail intake",mail.Original,"Email",mail.Language,mail.SourceUrl,mail.ExternalId,true,cancellation);
                     seen.Add(mail.ExternalId);accepted++;
-                    store.Update(owner,s=>s with{Seen=s.Seen.Concat(seen).Distinct().TakeLast(2000).ToArray()});
+                    store.Update(owner,s=>s with{Seen=s.Seen.Concat(seen).Distinct().TakeLast(2000).ToArray(),
+                        ForcedReview=s.ForcedReview.Where(id=>id!=mail.ExternalId).ToArray(),
+                        NonComplaintReview=s.NonComplaintReview.Where(r=>r.Mailbox!=policy.Mailbox||r.MessageId!=mail.ExternalId.Split(':').Last()).ToArray()});
                 }
             }
             var prepared=0;var failures=0;
@@ -53,7 +64,7 @@ public sealed class AutomationService(WorkspaceDb db,AutomationStore store,Gmail
                 try{await PrepareAsync(item,"Automatic intake",false,cancellation,policy.Policy);prepared++;}
                 catch(Exception ex)when(ex is InvalidOperationException or IOException or System.Text.Json.JsonException){failures++;db.ChangeTracker.Clear();}
             }
-            store.Update(owner,s=>s with{Seen=s.Seen.Concat(seen).Distinct().TakeLast(2000).ToArray(),LastRunUtc=clock.GetUtcNow(),Status=s.Policy!=policy.Policy?s.Status:$"Scanned {scanned} IDs; retained {accepted} likely complaints; prepared {prepared} drafts; {ignored} unrelated, {unsupported} unsupported, {retryable} collection/OCR failures awaiting retry, {failures} preparation failures. Draft preparation failures remain pending for retry. Unsupported emails require manual review in Gmail; no partial text was retained."});
+            store.Update(owner,s=>s with{Seen=s.Seen.Concat(seen).Distinct().TakeLast(2000).ToArray(),LastRunUtc=clock.GetUtcNow(),Status=s.Policy!=policy.Policy?s.Status:$"Scanned {scanned} IDs; retained {accepted} likely complaints; prepared {prepared} drafts; {ignored} not detected as complaints, {unsupported} unsupported, {retryable} collection/OCR failures awaiting retry, {failures} preparation failures. Draft preparation failures remain pending for retry. Unsupported emails require manual review in Gmail; no partial text was retained."});
         }
         catch(Exception ex)when(ex is InvalidOperationException or IOException or System.Text.Json.JsonException or DbUpdateException)
         {store.Update(owner,s=>s with{LastRunUtc=clock.GetUtcNow(),Status="Run incomplete. Check Gmail connection and local file access; retained messages remain available and the next run retries pending work."});throw new InvalidOperationException("Collection did not finish. Check the connection and queue status; existing messages were retained.");}
