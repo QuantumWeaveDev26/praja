@@ -10,9 +10,9 @@ namespace Praja.Web.Services;
 
 public sealed record GmailPreview(ImportPreview? Preview,IReadOnlyList<string> Notes);
 public sealed record AutomationMail(string ExternalId,string Original,string Language,string SourceUrl);
-public sealed record AutomationMailBatch(IReadOnlyList<AutomationMail> Messages,IReadOnlyList<string> Unsupported,int Scanned);
+public sealed record AutomationMailBatch(IReadOnlyList<AutomationMail> Messages,IReadOnlyList<string> Unsupported,int Scanned,int Retryable=0);
 public sealed partial class GmailService(GmailConfigurationStore settings,IHttpClientFactory clients,IDataProtectionProvider protection,
-    TimeProvider clock,InboxImportService imports)
+    TimeProvider clock,InboxImportService imports,MediaIntakeService? media=null)
 {
     public const string Scope="https://www.googleapis.com/auth/gmail.readonly";
     private sealed class OversizedGmailContentException():InvalidOperationException("Google returned too much content. Use smaller complaint emails.");
@@ -129,17 +129,17 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
             var token=Credential(refreshed.RootElement,"access_token");var expires=Expiry(refreshed.RootElement);
             current=settings.Update(owner,value=>value.Version==current.Version&&value.Connected?value with{AccessToken=token,AccessExpiresUtc=expires}:throw new InvalidOperationException("Gmail settings changed. Retry the connection."));
         }
-        var messages=new List<AutomationMail>();var unsupported=new List<string>();var scanned=0;var page="";
+        var messages=new List<AutomationMail>();var unsupported=new List<string>();var retryable=0;var scanned=0;var page="";
         var mailboxKey=Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(current.Mailbox)))[..24];
-        for(var number=0;number<5&&messages.Count+unsupported.Count<20;number++)
+        for(var number=0;number<5&&messages.Count+unsupported.Count+retryable<20;number++)
         {
-            if(continueReading?.Invoke()==false)break;
+            if(continueReading?.Invoke()==false||deadline.IsCancellationRequested)break;
             using var list=await Get("messages?maxResults=20&q="+Uri.EscapeDataString("in:inbox -in:spam -in:trash")+(page.Length==0?"":"&pageToken="+Uri.EscapeDataString(page)),current.AccessToken,deadline.Token);
             if(!list.RootElement.TryGetProperty("messages",out var entries))break;
             foreach(var entry in entries.EnumerateArray().Take(20))
             {
-                if(continueReading?.Invoke()==false)break;
-                if(messages.Count+unsupported.Count>=20)break;
+                if(continueReading?.Invoke()==false||deadline.IsCancellationRequested)break;
+                if(messages.Count+unsupported.Count+retryable>=20)break;
                 scanned++;var id=entry.GetProperty("id").GetString()??"";
                 if(!Regex.IsMatch(id,@"^[A-Za-z0-9_-]{1,100}$"))throw new InvalidOperationException("Gmail returned an unsupported message ID.");
                 var external="gmail:"+mailboxKey+":"+id;if(seen.Contains(external))continue;
@@ -150,8 +150,10 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
                 if(message.RootElement.GetProperty("id").GetString()!=id)throw new InvalidOperationException("Gmail returned a different message than requested.");
                 if(!message.RootElement.TryGetProperty("labelIds",out var labels)||!labels.EnumerateArray().Any(l=>l.GetString()=="INBOX")||labels.EnumerateArray().Any(l=>l.GetString() is "SPAM" or "TRASH")){unsupported.Add(external);continue;}
                 var payload=message.RootElement.GetProperty("payload");string? plain;
-            try { plain=await ReadContentAsync(payload,id,current.AccessToken,deadline.Token); }
-            catch (UnsupportedMailException) { unsupported.Add(external); continue; }var subject=Subject(payload);
+                try { plain=await ReadContentAsync(payload,id,current.AccessToken,deadline.Token,true); }
+                catch (UnsupportedMailException) { unsupported.Add(external); continue; }
+                catch (InvalidOperationException) { retryable++; continue; }
+                var subject=Subject(payload);
                 var original=(subject.Length>0?"Subject: "+subject+"\n\n":"")+plain;
                 if(plain is null||original.Trim().Length is <20 or >6000||original.Any(c=>char.IsControl(c)&&c is not ('\r' or '\n' or '\t'))){unsupported.Add(external);continue;}
                 messages.Add(new(external,original.Trim(),original.Any(c=>c is >= '\u0C80' and <= '\u0CFF')?"Kannada":"English","https://mail.google.com/mail/?authuser="+Uri.EscapeDataString(current.Mailbox)+"#all/"+id));
@@ -160,7 +162,7 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
             page=next.GetString()??"";if(page.Length is 0 or >2048||page.Any(char.IsControl))break;
         }
         if(settings.Read(owner).Version!=current.Version)throw new InvalidOperationException("Gmail settings changed during collection. Retry with the current connection.");
-        return new(messages,unsupported,scanned);
+        return new(messages,unsupported,scanned,retryable);
     }
     private static string Subject(JsonElement payload)
     {
@@ -183,16 +185,16 @@ public sealed partial class GmailService(GmailConfigurationStore settings,IHttpC
     private async Task<JsonDocument> Token(Dictionary<string,string> fields,CancellationToken cancellation)
     {using var request=new HttpRequestMessage(HttpMethod.Post,"https://oauth2.googleapis.com/token"){Content=new FormUrlEncodedContent(fields)};return await Send(request,cancellation);}
     private async Task<JsonDocument> Get(string path,string token,CancellationToken cancellation)
-    {using var request=new HttpRequestMessage(HttpMethod.Get,"https://gmail.googleapis.com/gmail/v1/users/me/"+path);request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);return await Send(request,cancellation);}
-    private async Task<JsonDocument> Send(HttpRequestMessage request,CancellationToken cancellation)
+    {using var request=new HttpRequestMessage(HttpMethod.Get,"https://gmail.googleapis.com/gmail/v1/users/me/"+path);request.Headers.Authorization=new AuthenticationHeaderValue("Bearer",token);return await Send(request,cancellation,path.StartsWith("messages/",StringComparison.Ordinal)?12*1024*1024:128_000);}
+    private async Task<JsonDocument> Send(HttpRequestMessage request,CancellationToken cancellation,int maximumBytes=128_000)
     {
         try
         {
             using var response=await clients.CreateClient("Gmail").SendAsync(request,HttpCompletionOption.ResponseHeadersRead,cancellation);
             if(!response.IsSuccessStatusCode)throw new InvalidOperationException("Google could not complete this request. Check Gmail API access, reconnect if needed, and retry. No messages were imported.");
-            if(response.Content.Headers.ContentLength>128_000)throw new OversizedGmailContentException();
+            if(response.Content.Headers.ContentLength>maximumBytes)throw new OversizedGmailContentException();
             await using var stream=await response.Content.ReadAsStreamAsync(cancellation);using var memory=new MemoryStream();var buffer=new byte[8192];int count;
-            while((count=await stream.ReadAsync(buffer,cancellation))>0){if(memory.Length+count>128_000)throw new OversizedGmailContentException();await memory.WriteAsync(buffer.AsMemory(0,count),cancellation);}
+            while((count=await stream.ReadAsync(buffer,cancellation))>0){if(memory.Length+count>maximumBytes)throw new OversizedGmailContentException();await memory.WriteAsync(buffer.AsMemory(0,count),cancellation);}
             return JsonDocument.Parse(memory.ToArray());
         }
         catch(Exception ex)when(ex is HttpRequestException or IOException or JsonException or OperationCanceledException)

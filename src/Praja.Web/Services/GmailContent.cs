@@ -11,7 +11,7 @@ public sealed partial class GmailService
     private sealed class UnsupportedMailException(string message) : Exception(message);
     private const int MaximumPartBytes = 65536;
 
-    private async Task<string?> ReadContentAsync(JsonElement payload, string messageId, string token, CancellationToken cancellation)
+    private async Task<string?> ReadContentAsync(JsonElement payload, string messageId, string token, CancellationToken cancellation, bool allowPdfOcr = false)
     {
         var parts = new List<JsonElement>();
         void Visit(JsonElement part, int depth)
@@ -28,7 +28,7 @@ public sealed partial class GmailService
         foreach (var attachment in attachments)
         {
             var extension = Path.GetExtension(Name(attachment)).ToLowerInvariant();
-            if (extension is not (".txt" or ".pdf")) throw new UnsupportedMailException("Only UTF-8 .txt and text-PDF attachments are supported.");
+            if (extension is not (".txt" or ".pdf")) throw new UnsupportedMailException("Only UTF-8 .txt and PDF attachments are supported.");
         }
         var bodyParts = parts.Where(p => Name(p).Length == 0 && Mime(p) is "text/plain" or "text/html").ToList();
         if (bodyParts.Count(p => Mime(p) == "text/plain") > 1 || (!bodyParts.Any(p => Mime(p) == "text/plain") && bodyParts.Count > 1))
@@ -42,34 +42,52 @@ public sealed partial class GmailService
             text = Decode(await PartBytes(selected, messageId, token, cancellation));
             if (Mime(selected) == "text/html") text = HtmlText(text);
         }
+        // Download all attachments and check byte limits before OCR. Never import a partial email.
+        var downloaded = new List<(JsonElement Part, byte[] Bytes)>();
+        var totalBytes = 0;
         foreach (var attachment in attachments)
         {
-            var bytes = await PartBytes(attachment, messageId, token, cancellation);
+            var limit = allowPdfOcr && Path.GetExtension(Name(attachment)).Equals(".pdf", StringComparison.OrdinalIgnoreCase) ? 8 * 1024 * 1024 : MaximumPartBytes;
+            var bytes = await PartBytes(attachment, messageId, token, cancellation, Math.Min(limit, 8 * 1024 * 1024 - totalBytes));
+            totalBytes += bytes.Length;
+            downloaded.Add((attachment, bytes));
+        }
+        foreach (var (attachment, bytes) in downloaded)
+        {
             var extension = Path.GetExtension(Name(attachment)).ToLowerInvariant();
             string extracted;
-            try
+            var method = "local " + extension + " text";
+            if (extension == ".txt") { EnsureUtf8(attachment); extracted = Decode(bytes).TrimStart('\uFEFF'); }
+            else
             {
-                if (extension == ".txt") { EnsureUtf8(attachment); extracted = Decode(bytes).TrimStart('\uFEFF'); }
-                else
+                if (!bytes.AsSpan().StartsWith("%PDF-"u8)) throw new UnsupportedMailException("Attachment is not a recognised PDF.");
+                PdfInspection inspection;
+                try { inspection = await PdfIntakeWorker.InspectAsync(bytes, cancellation); }
+                catch (InvalidOperationException) { throw new UnsupportedMailException("PDF inspection failed; no partial text extracted."); }
+                if (inspection.RequiresOcr)
                 {
-                    if (!bytes.AsSpan().StartsWith("%PDF-"u8)) throw new UnsupportedMailException("Attachment is not a recognised PDF.");
-                    extracted = await PdfIntakeWorker.ExtractAsync(bytes, cancellation);
+                    if (!allowPdfOcr) throw new UnsupportedMailException("Scanned PDFs need automatic intake with the configured PDF OCR service.");
+                    if (media is null) throw new InvalidOperationException("PDF OCR service is unavailable. Retry after configuring AI.");
+                    // Provider failures remain retryable: never mark this message unsupported or seen.
+                    var result = await media.ReadScannedPdfAsync(bytes, inspection.PageCount, cancellation);
+                    extracted = result.Text;
+                    method = "PDF OCR; verify against original";
                 }
+                else extracted = inspection.Text;
             }
-            catch (InvalidOperationException) { throw new UnsupportedMailException("Attachment text could not be extracted completely."); }
             if (string.IsNullOrWhiteSpace(extracted)) throw new UnsupportedMailException("An attachment has no readable text.");
             // Use a fixed ordinal rather than an untrusted filename in complaint text.
-            text += $"\n\n[Attachment {attachments.IndexOf(attachment) + 1}: local {extension} text]\n" + extracted;
+            text += $"\n\n[Attachment {attachments.IndexOf(attachment) + 1}: {method}]\n" + extracted;
             if (text.Length > 6000) throw new UnsupportedMailException("Combined text exceeds 6,000 characters; no truncation is performed.");
         }
         return string.IsNullOrWhiteSpace(text) ? null : text;
     }
 
-    private async Task<byte[]> PartBytes(JsonElement part, string messageId, string token, CancellationToken cancellation)
+    private async Task<byte[]> PartBytes(JsonElement part, string messageId, string token, CancellationToken cancellation, int maximumBytes = MaximumPartBytes)
     {
         if (!part.TryGetProperty("body", out var body)) throw new UnsupportedMailException("Missing MIME content.");
-        if (body.TryGetProperty("size", out var size) && (!size.TryGetInt32(out var count) || count < 0 || count > MaximumPartBytes))
-            throw new UnsupportedMailException("A body or attachment exceeds 64 KiB.");
+        if (body.TryGetProperty("size", out var size) && (!size.TryGetInt32(out var count) || count < 0 || count > maximumBytes))
+            throw new UnsupportedMailException("A body or attachment exceeds its byte limit (text: 64 KiB; automatic PDFs: 8 MiB total).");
         string encoded;
         if (body.TryGetProperty("data", out var data)) encoded = data.GetString() ?? "";
         else if (body.TryGetProperty("attachmentId", out var attachment))
@@ -85,11 +103,11 @@ public sealed partial class GmailService
             encoded = content.GetString() ?? "";
         }
         else return [];
-        if (encoded.Length > 87384) throw new UnsupportedMailException("A body or attachment exceeds 64 KiB.");
+        if (encoded.Length > ((long)maximumBytes + 2) / 3 * 4) throw new UnsupportedMailException("A body or attachment exceeds its byte limit (text: 64 KiB; automatic PDFs: 8 MiB total).");
         try
         {
             var bytes = WebEncoders.Base64UrlDecode(encoded);
-            if (bytes.Length > MaximumPartBytes) throw new UnsupportedMailException("A body or attachment exceeds 64 KiB.");
+            if (bytes.Length > maximumBytes) throw new UnsupportedMailException("A body or attachment exceeds its byte limit (text: 64 KiB; automatic PDFs: 8 MiB total).");
             return bytes;
         }
         catch (FormatException) { throw new UnsupportedMailException("Invalid attachment or body encoding."); }

@@ -226,3 +226,10 @@ The queue stores media in IndexedDB, with at most 20 records, 8 MiB per file and
 Reopen the page after reconnecting. Text/photo complaints sync automatically while the page is open. Voice recordings use the configured speech service after reconnecting; no new provider is needed, but transcription cannot run without a working speech configuration. Review and correct the transcript, then choose **Transcript is correct — send complaint**. Audio is used for transcription, not retained as case evidence. Incident photos are retained through the existing protected evidence service.
 
 A returned reference and private tracking code confirm registration. Failed requests retain the local media and stable submission key for retry. Confirmed receipts remove local photo/audio blobs. Sync does not run with the page closed. Offline GPS capture is not part of this delivery; use the online form for device coordinates.
+
+
+### Scanned PDF email intake
+
+Automatic Gmail intake processes scanned and mixed PDF attachments with the existing configured PDF-capable AI service. It inspects every page, sends the complete PDF when OCR is needed, includes page-marked text in complaint detection, and prepares likely complaints for officer review. No manual download/upload is required. Text PDFs remain local. Manual labelled-email preview remains local and does not invoke OCR.
+
+Automatic intake accepts up to three attachments, 8 MiB aggregate attachment bytes, 64 KiB per text attachment, 10 pages per PDF and 6,000 combined characters. PDFs may reach AI before complaint detection, including unrelated PDFs. Provider failures remain unseen for retry; malformed/unsupported attachments exclude the whole email. Attachment binaries are not stored as evidence. Existing source IDs prevent duplicate intake. Use **Retry skipped emails** on Automation for previously unsupported messages in the current mailbox, then **Run now**. Compare OCR with the source before registering.

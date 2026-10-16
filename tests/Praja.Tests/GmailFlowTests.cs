@@ -13,7 +13,7 @@ using Xunit;
 
 namespace Praja.Tests;
 
-public class GmailFlowTests
+public partial class GmailFlowTests
 {
     private const string ClientId = "qa-client.apps.googleusercontent.com";
     private const string Secret = "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";
@@ -319,16 +319,28 @@ public class GmailFlowTests
         public bool FailFetch{get;set;}
         public object? CustomPayload{get;set;} public byte[] AttachmentBytes{get;set;}=Encoding.UTF8.GetBytes("No water supply in Ward 12, Mysuru. Please restore supply.");
         public int AttachmentReads; public bool FailAttachment;
+        public int PdfCalls, PdfPages = 1; public string? PdfFailure; public bool SecondTextMessage;
         public string LabelType{get;set;}="user";public string? LabelName{get;set;}="Praja-Complaints";public string MessageLabel{get;set;}="Label_Complaints";public string LabelIds{get;private set;}="";public int MessageReads{get;private set;}public Action? OnProfile{get;set;}
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken cancellation)
         {
             Calls++;object payload;
+            if (request.RequestUri!.Host == "provider.example.test")
+            {
+                var body = await request.Content!.ReadAsStringAsync(cancellation);
+                if (!body.Contains("file_data")) return new(HttpStatusCode.ServiceUnavailable);
+                PdfCalls++;
+                if (PdfFailure == "provider-error") return new(HttpStatusCode.ServiceUnavailable);
+                var pages = Enumerable.Range(1, PdfFailure == "missing-page" ? 1 : PdfPages).Select(page => new { page, text = "No water supply in Ward 12, Mysuru, for three days. Please restore supply." }).ToArray();
+                var result = new { choices = new[] { new { finish_reason = PdfFailure == "truncated" ? "length" : "stop", message = new { content = JsonSerializer.Serialize(new { pages }) } } } };
+                return new(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(result), Encoding.UTF8, "application/json") };
+            }
             if(FailFetch&&request.RequestUri!.Host=="gmail.googleapis.com")return new(HttpStatusCode.ServiceUnavailable);
             if(request.RequestUri!.Host=="oauth2.googleapis.com") {TokenBody=await request.Content!.ReadAsStringAsync(cancellation);payload=new{access_token="synthetic-access-token",refresh_token="synthetic-refresh-token",token_type="Bearer",expires_in=3600,scope="https://www.googleapis.com/auth/gmail.readonly"};}
             else if(request.RequestUri.AbsolutePath.EndsWith("/profile")){OnProfile?.Invoke();payload=new{emailAddress=ProfileEmail};}
             else if(request.RequestUri.AbsolutePath.EndsWith("/labels"))payload=new{labels=new[]{new{id="Label_Complaints",name=LabelName,type=LabelType}}.Where(label=>label.name is not null).ToArray()};
-            else if(request.RequestUri.AbsolutePath.EndsWith("/messages")){var query=QueryHelpers.ParseQuery(request.RequestUri.Query);SearchQuery=query["q"].ToString();LabelIds=query.TryGetValue("labelIds",out var labelFilter)?labelFilter.ToString():"";payload=new{messages=new[]{new{id="abc123"}}};}
+            else if(request.RequestUri.AbsolutePath.EndsWith("/messages")){var query=QueryHelpers.ParseQuery(request.RequestUri.Query);SearchQuery=query["q"].ToString();LabelIds=query.TryGetValue("labelIds",out var labelFilter)?labelFilter.ToString():"";payload=new{messages=(SecondTextMessage ? new[]{"abc123","def456"} : new[]{"abc123"}).Select(id=>new{id}).ToArray()};}
             else if(request.RequestUri.AbsolutePath.EndsWith("/attachments/part1")){AttachmentReads++;if(FailAttachment)return new(HttpStatusCode.ServiceUnavailable);payload=new{data=WebEncoders.Base64UrlEncode(AttachmentBytes),size=AttachmentBytes.Length};}
+            else if(request.RequestUri.AbsolutePath.EndsWith("/messages/def456")){MessageReads++;payload=new{id="def456",labelIds=new[]{"INBOX"},payload=new{mimeType="text/plain",body=new{data=WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes("Street lights have stopped working in Ward 9, Mysuru. Please repair the broken street lights."))}}};}
             else if(request.RequestUri.AbsolutePath.EndsWith("/messages/abc123")){MessageReads++;payload=new{id="abc123",labelIds=new[]{MessageLabel},payload=CustomPayload??new{mimeType=MimeType,headers=new[]{new{name="Subject",value="Water complaint"}},body=new{data=WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(MessageText))}}};}
             else {if(request.RequestUri.Host=="gmail.googleapis.com")WriteCalls++;return new(HttpStatusCode.BadRequest);}
             return new(HttpStatusCode.OK){Content=new StringContent(JsonSerializer.Serialize(payload),Encoding.UTF8,"application/json")};

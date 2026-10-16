@@ -14,7 +14,7 @@ Files are limited to 8 MiB, PDFs to 10 pages and the resulting transcript (inclu
 
 Provider output must contain exactly one entry per page in order and finish normally. Missing/duplicate/out-of-order pages, malformed content, token-truncated responses and oversized transcripts are rejected. These structural checks cannot prove every visible word was transcribed accurately. Every page still needs human review, particularly Kannada handwriting and faint scans.
 
-Gmail attachments and local case briefings remain local-text extraction only. A mixed/scanned PDF is rejected there rather than silently retaining only its text layer. Download the petition from its source and use the document intake workflow for consented OCR.
+Local case briefings and manual Gmail preview remain local-text extraction only. Automatic Gmail intake now supports scanned/mixed PDF OCR; see GMAIL_SCANNED_PDF_TESTING.md.
 
 ## Test scope
 

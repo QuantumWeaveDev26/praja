@@ -13,8 +13,9 @@ integration or production acceptance certificate.
 - Gmail Inbox collection, complaint detection and prepared drafts; manual/CSV
   intake and explicitly fictional social demonstrations.
 - Gmail plain-text and HTML bodies; HTML becomes plain text without rendering or
-  remote-resource loading. Up to three UTF-8 text or text-PDF attachments are
-  supported, each at most 64 KiB, within a 6,000-character combined extraction limit.
+  remote-resource loading. Automatic intake supports up to three UTF-8 text/PDF attachments,
+  8 MiB aggregate bytes (text: 64 KiB each), 10 pages per PDF, and 6,000 combined characters.
+  Scanned/mixed PDFs use provider OCR; manual Gmail preview stays local with its 64 KiB limit.
   Unsupported parts send the whole message to manual review; transient failures
   remain retryable. Attachment binaries are not retained as case evidence.
 - Admin, intake, department, reviewer and contractor roles with scoped dashboards;
@@ -35,7 +36,7 @@ integration or production acceptance certificate.
 1. Representative complaint-detection evaluation and clearer handling of uncertain
    or missed intake messages.
 2. Real-device offline media, microphone and storage eviction testing across target phones.
-3. Representative multilingual/media OCR evaluation and explicit scanned-email attachment processing.
+3. Representative multilingual/media OCR evaluation and live scanned-email OCR accuracy evaluation.
 4. Recurrence/department-performance analytics and duplicate/paraphrase review.
 5. Backup/restore drills, retention controls, accessibility, real-device testing,
    load/failure testing and security review.
@@ -63,3 +64,5 @@ Tests use isolated databases and synthetic provider responses. Passing automated
 tests does not establish real-device microphone/GPS accuracy, accessibility,
 production security or government acceptance. Live credentials and local case data
 are intentionally excluded from this repository.
+
+Automatic Gmail scanned/mixed PDF intake is implemented; limits and validation are documented in GMAIL_SCANNED_PDF_TESTING.md. Live handwriting/Kannada accuracy remains unverified.

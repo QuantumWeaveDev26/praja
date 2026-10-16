@@ -5,7 +5,7 @@ namespace Praja.Web.Services;
 
 public partial class MediaIntakeService
 {
-    private async Task<IntakeText> ReadScannedPdfAsync(byte[] bytes, int pageCount, CancellationToken cancellation)
+    internal async Task<IntakeText> ReadScannedPdfAsync(byte[] bytes, int pageCount, CancellationToken cancellation)
     {
         var current = Settings;
         if (!current.DraftingConfigured)

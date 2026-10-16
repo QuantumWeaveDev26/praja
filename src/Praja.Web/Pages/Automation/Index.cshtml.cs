@@ -22,6 +22,23 @@ public class IndexModel(AutomationStore store,AutomationService automation,Gmail
     }
     public async Task<IActionResult> OnGetAsync(){if(!Allowed())return NotFound();await Load();return Page();}
     public IActionResult OnPostEnable(){if(!Allowed())return NotFound();if(!Permission){Notice="Confirm the one-time processing permission before enabling automation.";return RedirectToPage();}store.Update(User.OwnerId(),s=>s with{Enabled=true,Mailbox=gmail.Read(User.OwnerId()).Mailbox,Policy=Guid.NewGuid(),Status="Enabled. The worker checks every 60 seconds while Praja is running. Use Run now for an immediate check."});return RedirectToPage();}
+    public async Task<IActionResult> OnPostRetrySkippedAsync()
+    {
+        if(!Allowed())return NotFound();
+        var owner=User.OwnerId();var gate=store.RunLock(owner);
+        if(!await gate.WaitAsync(0)){Notice="A collection run is active. Retry after it finishes.";return RedirectToPage();}
+        try
+        {
+            var mailbox=gmail.Read(owner).Mailbox;
+            var key=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(mailbox)))[..24];
+            store.Update(owner,s=>s with{
+                Seen=s.Seen.Except(s.ManualReview.Where(r=>r.Mailbox==mailbox).Select(r=>"gmail:"+key+":"+r.MessageId)).ToArray(),
+                ManualReview=s.ManualReview.Where(r=>r.Mailbox!=mailbox).ToArray()});
+            Notice="Skipped emails queued for another check. Enable automation and use Run now.";
+        }
+        finally{gate.Release();}
+        return RedirectToPage();
+    }
     public IActionResult OnPostPause(){if(!Allowed())return NotFound();store.Update(User.OwnerId(),s=>s with{Enabled=false,Policy=Guid.NewGuid(),Status="Paused. Prepared drafts and source messages remain available."});return RedirectToPage();}
     public async Task<IActionResult> OnPostRunAsync(){if(!Allowed())return NotFound();try{await automation.RunAsync(User.OwnerId(),HttpContext.RequestAborted);Notice="Collection finished. Review the prepared queue below.";}catch(InvalidOperationException ex){Notice=ex.Message;}return RedirectToPage();}
     public async Task<IActionResult> OnPostDemoAsync(){if(!Allowed())return NotFound();if(!Permission){Notice="Confirm permission to process the three fictional demo posts.";return RedirectToPage();}try{await automation.DemoAsync(User.OwnerId(),HttpContext.RequestAborted);Notice="Social demo finished. These are simulated posts, not live platform results.";}catch(Exception ex)when(ex is InvalidOperationException or IOException){Notice="Demo preparation could not finish. Retained messages remain in the intake inbox for retry.";}return RedirectToPage();}
