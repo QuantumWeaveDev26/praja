@@ -496,6 +496,9 @@ namespace Praja.Web.Migrations.Sqlite
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("DuplicateOfId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ExternalId")
                         .HasMaxLength(150)
                         .HasColumnType("TEXT");
@@ -556,6 +559,8 @@ namespace Praja.Web.Migrations.Sqlite
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DuplicateOfId");
 
                     b.HasIndex("GrievanceId")
                         .IsUnique()
@@ -752,6 +757,11 @@ namespace Praja.Web.Migrations.Sqlite
 
             modelBuilder.Entity("Praja.Web.Data.InboxMessage", b =>
                 {
+                    b.HasOne("Praja.Web.Data.Grievance", null)
+                        .WithMany()
+                        .HasForeignKey("DuplicateOfId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Praja.Web.Data.Grievance", "Grievance")
                         .WithMany()
                         .HasForeignKey("GrievanceId")

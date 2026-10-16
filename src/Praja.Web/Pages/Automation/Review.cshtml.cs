@@ -8,9 +8,10 @@ using Praja.Web.Services;
 namespace Praja.Web.Pages.Automation;
 [EnableRateLimiting("inbox")]
 [RequestSizeLimit(128*1024)]
-public class ReviewModel(WorkspaceDb db,AutomationStore store,CaseService cases,IWebHostEnvironment environment):PageModel
+public class ReviewModel(WorkspaceDb db,AutomationStore store,CaseService cases,IWebHostEnvironment environment,InboxService inbox):PageModel
 {
     public PreparedComplaint Proposal{get;private set;}=null!;public InboxMessage Item{get;private set;}=null!;
+    public List<InboxDuplicate> Duplicates{get;private set;}=[];
     [BindProperty]public int Version{get;set;}
     [BindProperty]public string? Title{get;set;}
     [BindProperty]public string? DraftText{get;set;}
@@ -25,17 +26,20 @@ public class ReviewModel(WorkspaceDb db,AutomationStore store,CaseService cases,
     {
         Item=(await db.InboxMessages.SingleOrDefaultAsync(m=>m.Id==id&&m.OwnerId==User.OwnerId()))!;
         Proposal=store.Read(User.OwnerId()).Prepared.SingleOrDefault(p=>p.InboxId==id)!;
-        return Item is not null&&(Proposal is not null||Item.GrievanceId.HasValue);
+        if(Item is not null&&Item.State=="Pending")Duplicates=await inbox.DuplicatesAsync(Item,HttpContext.RequestAborted);
+        return Item is not null;
     }
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         if(!Allowed()||!await Load(id))return NotFound();if(Item.GrievanceId is{}caseId)return RedirectToPage("/Grievances/Details",new{id=caseId});
+        if(Item.State!="Pending"||Proposal is null||Proposal.InboxVersion!=Item.Version)return RedirectToPage("/Intake/Details",new{id});
         Version=Item.Version;Title=Proposal.Draft.Title;DraftText=Proposal.Draft.Text;District=Proposal.Analysis.District;Location=Proposal.Analysis.Location;
         Department=Proposal.Analysis.Route.Department;CategoryCode=Proposal.Analysis.Route.Category;SubcategoryCode=Proposal.Analysis.Route.Subcategory;return Page();
     }
     public async Task<IActionResult> OnPostApproveAsync(Guid id)
     {
         if(!Allowed()||!await Load(id))return NotFound();if(Item.GrievanceId is{}caseId)return RedirectToPage("/Grievances/Details",new{id=caseId});
+        if(Item.State!="Pending"||Proposal is null||Proposal.InboxVersion!=Item.Version)return RedirectToPage("/Intake/Details",new{id});
         try
         {
             if(!Reviewed)throw new InvalidOperationException("Review the prepared details and confirm registration.");
@@ -56,6 +60,6 @@ public class ReviewModel(WorkspaceDb db,AutomationStore store,CaseService cases,
             catch{await transaction.RollbackAsync(CancellationToken.None);db.ChangeTracker.Clear();throw;}
         }
         catch(Exception ex)when(ex is InvalidOperationException or DbUpdateException)
-        {ModelState.Clear();Reviewed=false;if(!await Load(id))return NotFound();ModelState.AddModelError("",ex is InvalidOperationException?ex.Message:"The source changed or could not be saved. No partial registration was retained. Refresh and retry.");return Page();}
+        {ModelState.Clear();Reviewed=false;if(!await Load(id))return NotFound();if(Item.State!="Pending"||Proposal is null||Proposal.InboxVersion!=Item.Version)return RedirectToPage("/Intake/Details",new{id});ModelState.AddModelError("",ex is InvalidOperationException?ex.Message:"The source changed or could not be saved. No partial registration was retained. Refresh and retry.");return Page();}
     }
 }

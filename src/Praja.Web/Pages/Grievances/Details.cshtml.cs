@@ -8,6 +8,8 @@ namespace Praja.Web.Pages.Grievances;
 public class DetailsModel(CaseService cases, CitizenAccessService citizenAccess, EvidenceService evidence) : PageModel
 {
     public Grievance Case { get; private set; } = null!;
+    public List<InboxDuplicate> DuplicateCandidates {get;private set;}=[];
+    public List<InboxMessage> DuplicateSources {get;private set;}=[];
     public InboxMessage? InboxSource {get;private set;}
     public ClosureAssessment Assessment => CaseRules.AssessClosure(Case.OriginalText, Case.ResolutionReport, Case.EvidenceReference, Case.CitizenFeedback);
     public CitizenAccessCode? IssuedAccess { get; private set; }
@@ -71,6 +73,8 @@ public class DetailsModel(CaseService cases, CitizenAccessService citizenAccess,
     {
         Case=(await cases.FindAsync(id,User.OwnerId()))!;
         if(Case is null)return false;
+        DuplicateCandidates=await cases.FindDuplicateCandidatesAsync(Case);
+        DuplicateSources=await cases.FindDuplicateSourcesAsync(id,User.OwnerId());
         InboxSource=await cases.FindInboxSourceAsync(id,User.OwnerId());
         Evidence=await evidence.ListAsync(id,User.OwnerId(),HttpContext.RequestAborted); return true;
     }

@@ -57,7 +57,7 @@ public class InboxFlowTests
         }
         var response=await Post(client,"/Intake/New",new(){["Input.OriginalText"]=Complaint,["Input.Channel"]="Paper transcription",["Input.Language"]="English",["Input.Permission"]="true"});
         Assert.Equal(HttpStatusCode.Redirect,response.StatusCode);
-        var html=await client.GetStringAsync(response.Headers.Location!);Assert.Contains("DUPLICATE-CANDIDATE",html);Assert.Contains("Matching wording",html);
+        var html=await client.GetStringAsync(response.Headers.Location!);Assert.Contains("DUPLICATE-CANDIDATE",html);Assert.Contains("Possible duplicate complaints",html);
     }
 
     [Fact]

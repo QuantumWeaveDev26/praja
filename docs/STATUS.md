@@ -20,6 +20,8 @@ integration or production acceptance certificate.
   remain retryable. Attachment binaries are not retained as case evidence.
 - Officer recovery of emails not detected as complaints: reference-only review list, explicit
   recheck permission, mailbox-scoped retry, dismissal and duplicate protection.
+- Local exact/similar wording duplicate suggestions, officer-reviewed linking of incoming
+  reports to existing cases, keep-separate decisions, case audit and preserved sources.
 - Admin, intake, department, reviewer and contractor roles with scoped dashboards;
   account management, reassignment, cross-department transfer and mandatory
   first-login password changes.
@@ -39,7 +41,7 @@ integration or production acceptance certificate.
    but keyword detection accuracy still needs a labelled representative dataset.
 2. Real-device offline media, microphone and storage eviction testing across target phones.
 3. Representative multilingual/media OCR evaluation and live scanned-email OCR accuracy evaluation.
-4. Recurrence/department-performance analytics and duplicate/paraphrase review.
+4. Recurrence/department-performance analytics and representative duplicate/paraphrase accuracy evaluation.
 5. Backup/restore drills, retention controls, accessibility, real-device testing,
    load/failure testing and security review.
 

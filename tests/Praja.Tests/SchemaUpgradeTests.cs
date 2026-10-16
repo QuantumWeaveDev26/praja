@@ -17,7 +17,8 @@ public class SchemaUpgradeTests
             var old=db.Database.GetMigrations().Single(m=>m.EndsWith("_AddIntakeInbox"));await db.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>().MigrateAsync(old);
             var owner=new Operator{Email="routing-upgrade@example.test",PasswordHash="original-hash"};await InsertOldOperator(db,owner);
             var item=new Grievance{OwnerId=owner.Id,Reference="PRE-ROUTING",OriginalText="Keep this original source exactly.",DraftText="Keep the edited draft exactly.",Department="water",Version=7};await InsertOldCase(db,item);
-            db.InboxMessages.Add(new(){OwnerId=owner.Id,OriginalText=item.OriginalText,Channel="Text",GrievanceId=item.Id,State="Converted",Version=2,CapturedBy="Original officer"});
+            // Seed the historical table shape, not the current EF model with newer columns.
+            await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO InboxMessages (Id,OwnerId,OriginalText,Channel,Language,SourceUrl,Fingerprint,ReceivedUtc,CapturedBy,State,Version,GrievanceId,ReviewNote,ReviewedBy) VALUES ({Guid.NewGuid()},{owner.Id},{item.OriginalText},'Text','English','','',{DateTime.UtcNow},'Original officer','Converted',2,{item.Id},'','')");
             db.EvidenceAttachments.Add(new(){GrievanceId=item.Id,FileName="evidence.pdf",ContentType="application/pdf",Sha256=new string('B',64),ByteLength=3,ProtectedContent=[4,5,6]});await db.SaveChangesAsync();
             await WorkspaceSchema.InitializeAsync(db,backups);db.ChangeTracker.Clear();var saved=await db.Grievances.SingleAsync();
             Assert.Equal(item.OriginalText,saved.OriginalText);Assert.Equal(item.DraftText,saved.DraftText);Assert.Equal(7,saved.Version);Assert.Equal("water",saved.Department);Assert.Equal("",saved.CategoryCode);Assert.Equal("",saved.RoutingMethod);

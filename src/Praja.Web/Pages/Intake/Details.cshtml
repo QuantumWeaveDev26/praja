@@ -5,11 +5,30 @@
 <div asp-validation-summary="All" class="validation" role="alert"></div>
 @if (InboxImportService.IsDemoSample(item)) { <div class="notice vertical"><strong>Fictional demo message.</strong><p>A draft made from this exact sample is marked Sample and excluded from normal analytics by default.</p></div> }
 <section class="panel source-panel"><div class="panel-heading"><h2>Preserved original message</h2></div><blockquote class="original-text">@item.OriginalText</blockquote><dl class="record-details"><dt>Source link</dt><dd>@if(item.SourceUrl.Length>0){<a class="text-link" href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">@item.SourceUrl</a>}else{<span>Not supplied</span>}</dd><dt>Source message ID</dt><dd>@(item.ExternalId??"Not supplied")</dd><dt>Inbox reference</dt><dd>@item.Id</dd></dl></section>
-@if(Model.Duplicates.Count>0){<section class="panel form-panel"><h2>Matching wording needs a check.</h2><p class="muted">These may describe the same issue. Compare the records before creating another case; no duplicate was automatically discarded.</p><ul class="plain-list">@foreach(var match in Model.Duplicates){<li><a class="text-link" href="@(match.IsCase?"/Grievances/Details/":"/Intake/Details/")@match.Id">@match.Label →</a></li>}</ul></section>}
-<p class="muted small">Matching checks compare normalised wording in this inbox and recent local cases. Reworded complaints and older cases still need officer review.</p>
+@if(Model.Duplicates.Count>0){
+<section class="panel form-panel"><h2>Possible duplicate complaints</h2><p class="muted">Compare the incident, location and dates before deciding. Suggestions do not merge cases or discard messages.</p><ul class="plain-list">@foreach(var match in Model.Duplicates){<li><a class="text-link" href="@(match.IsCase?"/Grievances/Details/":"/Intake/Details/")@match.Id">@match.Label →</a><p class="field-help">@match.Reason</p></li>}</ul>
 @if(item.State=="Pending"){
+    @if(Model.Duplicates.Any(m=>m.IsCase)){
+    <form method="post" asp-page-handler="LinkDuplicate" data-busy>
+        <input name="Version" value="@Model.Version" type="hidden"/>
+        <label for="duplicate-case">Existing case</label><select id="duplicate-case" name="CaseId" required><option value="">Choose a matching case</option>@foreach(var match in Model.Duplicates.Where(m=>m.IsCase)){<option value="@match.Id">@match.Label</option>}</select>
+        <label for="duplicate-note">Why is this the same incident?</label><textarea id="duplicate-note" name="ReviewNote" rows="3" required minlength="20" maxlength="500">@Model.ReviewNote</textarea>
+        <label class="check-row consent"><input name="ConfirmDuplicate" type="checkbox" value="true" required/><span>I compared both records and confirm that this message describes the same incident.</span></label>
+        <button class="button secondary">Link to existing case</button><p class="field-help">The original message and source stay preserved. This removes the message from the preparation queue without creating another case.</p>
+    </form>
+    }
+    <form method="post" asp-page-handler="KeepSeparate" data-busy>
+        <input name="Version" value="@Model.Version" type="hidden"/>
+        <label for="separate-note">Why should this remain a separate complaint?</label><textarea id="separate-note" name="ReviewNote" rows="3" required minlength="20" maxlength="500">@Model.ReviewNote</textarea>
+        <button class="button secondary">Keep as a separate complaint</button><p class="field-help">Records your decision and keeps this message pending for draft preparation.</p>
+    </form>
+}
+</section>}
+<p class="muted small">Matching checks compare wording in recent local records. Suggestions may miss reworded complaints or flag separate incidents with similar wording. An officer makes the final decision.</p>
+@if(item.State=="Pending"){
+@if(!string.IsNullOrWhiteSpace(item.ReviewNote)){<section class="panel form-panel"><h2>Previous review decision</h2><p>@item.ReviewNote</p><p class="muted">@item.ReviewedBy · @item.ReviewedUtc?.ToString("dd MMM yyyy, HH:mm") UTC</p></section>}
 <section class="panel action-panel"><div><h2>Ready to prepare a draft?</h2><p class="muted">Review source relevance and duplicates first. AI processing still requires consent on the intake screen.</p></div><a class="button primary" href="/Grievances/New?InboxId=@item.Id">Review details and prepare draft →</a></section>
 <section class="panel form-panel"><h2>Keep out of casework.</h2><p class="muted">Retain this message with a reason if it is irrelevant, spam, or already handled. This does not delete it.</p><form method="post" asp-page-handler="Dismiss" data-busy><input asp-for="Version" type="hidden"/><label asp-for="ReviewNote">Review reason</label><textarea asp-for="ReviewNote" rows="3" required minlength="20" maxlength="500"></textarea><button class="button secondary">Dismiss from pending inbox</button></form></section>
 }else{
-<section class="panel form-panel"><h2>Review recorded.</h2><p>@item.ReviewNote</p><p class="muted">@item.ReviewedBy · @item.ReviewedUtc?.ToString("dd MMM yyyy, HH:mm") UTC</p>@if(item.GrievanceId is { } caseId){<a class="button primary" href="/Grievances/Details/@caseId">Open prepared case →</a>}</section>
+<section class="panel form-panel"><h2>Review recorded.</h2><p>@item.ReviewNote</p><p class="muted">@item.ReviewedBy · @item.ReviewedUtc?.ToString("dd MMM yyyy, HH:mm") UTC</p>@if(item.DuplicateOfId is { } duplicateId){<p>This message is linked to an existing case. Its original wording remains preserved above.</p><a class="button primary" href="/Grievances/Details/@duplicateId">Open linked case →</a>}else if(item.GrievanceId is { } caseId){<a class="button primary" href="/Grievances/Details/@caseId">Open prepared case →</a>}</section>
 }

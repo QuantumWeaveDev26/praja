@@ -115,6 +115,7 @@ public class WorkspaceDb(DbContextOptions<WorkspaceDb> options) : DbContext(opti
         model.Entity<InboxMessage>().HasIndex(m => new { m.OwnerId, m.Fingerprint });
         model.Entity<InboxMessage>().HasIndex(m => new { m.OwnerId, m.IdempotencyKey }).IsUnique().HasFilter("[IdempotencyKey] IS NOT NULL");
         model.Entity<InboxMessage>().HasIndex(m => m.GrievanceId).IsUnique().HasFilter("[GrievanceId] IS NOT NULL");
+        model.Entity<InboxMessage>().HasOne<Grievance>().WithMany().HasForeignKey(m => m.DuplicateOfId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<InboxMessage>().Property(m => m.Version).IsConcurrencyToken();
         model.Entity<InboxMessage>().HasOne<Operator>().WithMany().HasForeignKey(m => m.OwnerId).OnDelete(DeleteBehavior.Restrict);
         model.Entity<InboxMessage>().HasOne(m => m.Grievance).WithMany().HasForeignKey(m => m.GrievanceId).OnDelete(DeleteBehavior.Restrict);

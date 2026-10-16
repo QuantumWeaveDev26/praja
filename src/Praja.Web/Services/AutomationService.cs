@@ -55,8 +55,8 @@ public sealed class AutomationService(WorkspaceDb db,AutomationStore store,Gmail
             }
             var prepared=0;var failures=0;
             var pending=await db.InboxMessages.AsNoTracking().Where(m=>m.OwnerId==owner&&m.State=="Pending").OrderBy(m=>m.ReceivedUtc).Take(100).ToListAsync(cancellation);
-            var activeIds=await db.InboxMessages.AsNoTracking().Where(m=>m.OwnerId==owner&&m.State=="Pending").Select(m=>m.Id).ToListAsync(cancellation);
-            store.Update(owner,s=>s with{Prepared=s.Prepared.Where(p=>activeIds.Contains(p.InboxId)).ToArray()});
+            var activeIds=await db.InboxMessages.AsNoTracking().Where(m=>m.OwnerId==owner&&m.State=="Pending").Select(m=>new{m.Id,m.Version,m.Fingerprint}).ToListAsync(cancellation);
+            store.Update(owner,s=>s with{Prepared=s.Prepared.Where(p=>activeIds.Any(m=>m.Id==p.InboxId&&m.Version==p.InboxVersion&&m.Fingerprint==p.Fingerprint)).ToArray()});
             foreach(var item in pending)
             {
                 if(!Current(owner,policy.Policy)||prepared+failures>=5)break;

@@ -21,6 +21,7 @@ public class CaseService(WorkspaceDb db, DraftingService drafts)
         item.IsSample = InboxImportService.IsDemoSample(source);
         if (item.IsSample) item.History.Add(new() { Actor = actor, Action = "Fictional channel-import sample preserved as a sample case; normal analytics excludes samples by default." });
         item.History.Add(new() {Actor = actor, Action = $"Original retained from inbox item {source.Id}; source channel and references remain available in the intake inbox."});
+        if(source.ReviewedUtc.HasValue&&source.ReviewNote.Length>0)item.History.Add(new(){Actor=source.ReviewedBy,Action="Incoming duplicate review kept separate: "+source.ReviewNote[..Math.Min(450,source.ReviewNote.Length)]});
         source.State = "Converted"; source.Grievance = item; source.GrievanceId = item.Id; source.Version++;
         source.ReviewedBy = actor; source.ReviewedUtc = DateTime.UtcNow; source.ReviewNote = "Draft prepared; registration and final routing confirmation remain required.";
         db.Grievances.Add(item);
@@ -30,6 +31,8 @@ public class CaseService(WorkspaceDb db, DraftingService drafts)
         return item;
     }
     public Task<InboxMessage?> FindInboxSourceAsync(Guid id, Guid owner) => db.InboxMessages.AsNoTracking().SingleOrDefaultAsync(m => m.GrievanceId == id && m.OwnerId == owner);
+    public Task<List<InboxDuplicate>> FindDuplicateCandidatesAsync(Grievance item)=>new InboxService(db).DuplicatesAsync(new InboxMessage{OwnerId=item.OwnerId,GrievanceId=item.Id,OriginalText=item.OriginalText,Fingerprint=InboxService.Fingerprint(item.OriginalText)});
+    public Task<List<InboxMessage>> FindDuplicateSourcesAsync(Guid id,Guid owner)=>db.InboxMessages.AsNoTracking().Where(m=>m.DuplicateOfId==id&&m.OwnerId==owner).OrderByDescending(m=>m.ReviewedUtc).Take(100).ToListAsync();
     private async Task<Grievance> PrepareAsync(Guid owner, string actor, string original, string language, string district, string location, string source, bool consent, CancellationToken cancellation, RoutingSuggestion? intakeRoute, FollowUpAnswers? followUp, DraftResult? preparedDraft = null)
     {
         if (!consent) throw new InvalidOperationException("Confirm consent to record and process this complaint.");

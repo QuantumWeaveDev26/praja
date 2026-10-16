@@ -238,3 +238,8 @@ Automatic intake accepts up to three attachments, 8 MiB aggregate attachment byt
 ### Missed email complaints
 
 Automation lists the latest 50 references to emails not detected as complaints. Officers can read each original in Gmail, confirm processing permission and select **Recheck as complaint**. **Run now** then fetches the message directly and prepares it for review, bypassing only the local complaint keyword test. Size/content validation, mailbox scope and final registration review still apply. **Dismiss review reference** removes the reminder without changing Gmail. Unrelated email bodies and subjects are not retained in this list. See `docs/MISSED_EMAIL_REVIEW_TESTING.md` for limits and test coverage.
+
+
+### Duplicate complaint review
+
+Intake inbox now shows exact and similar-wording candidate matches. Officers can link a confirmed duplicate to a registered case or keep it separate with a recorded reason. Original messages remain intact; linked reports appear on case details and under the Duplicate inbox filter. Automation and case pages show related-record hints. No automatic merging or citizen access sharing occurs. Matching is local, bounded and heuristic; see `docs/DUPLICATE_REVIEW_TESTING.md` for workflow, limits and validation.

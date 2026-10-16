@@ -17,6 +17,7 @@ public class InboxMessage
     [MaxLength(20)] public string State { get; set; } = "Pending";
     public int Version { get; set; } = 1;
     public Guid? GrievanceId { get; set; }
+    public Guid? DuplicateOfId { get; set; }
     public Grievance? Grievance { get; set; }
     [MaxLength(500)] public string ReviewNote { get; set; } = "";
     [MaxLength(120)] public string ReviewedBy { get; set; } = "";

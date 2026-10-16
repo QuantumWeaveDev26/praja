@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore;
 using Praja.Web.Data;
 
 namespace Praja.Web.Services;
-public sealed record InboxDuplicate(Guid Id, string Label, bool IsCase);
-public class InboxService(WorkspaceDb db)
+public sealed record InboxDuplicate(Guid Id, string Label, bool IsCase, string Reason = "Exact normalized wording");
+public partial class InboxService(WorkspaceDb db)
 {
     public static readonly string[] Channels = ["Text", "Email", "Field meeting", "Paper transcription", "Document extraction", "Voice transcript", "Social media"];
     public static string Fingerprint(string text) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
@@ -58,11 +58,14 @@ public class InboxService(WorkspaceDb db)
 
     public async Task<List<InboxDuplicate>> DuplicatesAsync(InboxMessage item, CancellationToken cancellation = default)
     {
-        var other = await db.InboxMessages.AsNoTracking().Where(m => m.OwnerId == item.OwnerId && m.Id != item.Id && m.State != "Dismissed" && m.Fingerprint == item.Fingerprint)
-            .OrderByDescending(m => m.ReceivedUtc).Take(10).Select(m => new InboxDuplicate(m.Id, m.Channel + " · " + m.State, false)).ToListAsync(cancellation);
-        var recent = await db.Grievances.AsNoTracking().Where(g => g.OwnerId == item.OwnerId && g.Id != item.GrievanceId)
-            .OrderByDescending(g => g.CreatedUtc).Take(200).Select(g => new {g.Id, g.Reference, g.OriginalText}).ToListAsync(cancellation);
-        other.AddRange(recent.Where(g => Fingerprint(g.OriginalText) == item.Fingerprint).Take(10).Select(g => new InboxDuplicate(g.Id, g.Reference, true)));
+        var recentInbox = await db.InboxMessages.AsNoTracking().Where(m => m.OwnerId == item.OwnerId && m.Id != item.Id && m.State == "Pending")
+            .OrderByDescending(m => m.ReceivedUtc).Take(200).ToListAsync(cancellation);
+        var other = recentInbox.Select(m => new { Item=m, Reason=MatchReason(item.OriginalText,m.OriginalText) }).Where(m=>m.Reason is not null)
+            .Take(10).Select(m=>new InboxDuplicate(m.Item.Id,m.Item.Channel+" · "+m.Item.State,false,m.Reason!)).ToList();
+        var recent = await db.Grievances.AsNoTracking().Where(g => g.OwnerId == item.OwnerId && g.Id != item.GrievanceId && !g.IsSample)
+            .OrderByDescending(g => g.CreatedUtc).Take(200).ToListAsync(cancellation);
+        other.AddRange(recent.Select(g=>new {Item=g,Reason=MatchReason(item.OriginalText,g.OriginalText)}).Where(g=>g.Reason is not null)
+            .Take(10).Select(g=>new InboxDuplicate(g.Item.Id,g.Item.Reference+" · "+g.Item.Status,true,g.Reason!)));
         return other;
     }
 
