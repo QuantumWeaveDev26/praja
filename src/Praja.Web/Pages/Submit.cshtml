@@ -1,7 +1,7 @@
 @page
 @model Praja.Web.Pages.SubmitModel
 @{ViewData["Title"]="Submit a complaint";}
-<p><a class="button secondary" href="/offline.html">Offline capture / ಸಂಪರ್ಕವಿಲ್ಲದೆ ದೂರು ಉಳಿಸಿ</a> Text-only offline capture. Photos and device location need the online form. Open once while connected to prepare this device.</p>
+<p><a class="button secondary" href="/offline.html">Offline capture / ಸಂಪರ್ಕವಿಲ್ಲದೆ ದೂರು ಉಳಿಸಿ</a> Save text, an incident photo or a voice recording on this device. Reconnect to sync; review voice transcripts before submission. Device location uses this online form. Open offline capture once while connected to prepare this device.</p>
 <div><div class="page-heading"><div><span class="eyebrow">CITIZEN PORTAL</span><h1>Tell us what needs fixing.</h1><p>Describe the issue in English or Kannada. We suggest the service; officers handle the work.</p></div></div><p><a href="/CitizenLogin">Track my complaint / Citizen access</a> · <a href="/Transparency">Public progress dashboard</a> · <a href="/PublicMap">Nearby complaints</a></p>
 @if(Model.Submitted is {} item){
 <section class="panel form-panel" role="status"><h2>Complaint received</h2><p>Your reference: <strong>@item.Reference</strong></p><p>Service: @CaseRules.Departments[item.Department]. Awaiting intake review and officer assignment.</p><label for="receipt-code">Save your private tracking code</label><textarea id="receipt-code" readonly rows="4" autocomplete="off" spellcheck="false">@Model.Code</textarea><p>Valid for seven days. Anyone holding this code can view progress and shared evidence and confirm or dispute resolution. Keep it private.</p><a class="button primary" href="/Track">Open citizen tracking</a></section>

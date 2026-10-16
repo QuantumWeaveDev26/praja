@@ -106,7 +106,7 @@ No government login, database or portal is accessed by this app. Local PRJ/DEMO 
 
 ## Subsequent use cases
 
-Social-media integration, offline field synchronisation, live IPGRS integration and government-wide policy analytics remain unimplemented. Voice/OCR provider connectors are implemented but need approved credentials and real Kannada evaluation. The Connections page maps all nine use cases to the current behavior and remaining work.
+Social-media integration, live IPGRS integration and government-wide policy analytics remain unimplemented. Voice/OCR provider connectors are implemented but need approved credentials and real Kannada evaluation. The Connections page maps all nine use cases to the current behavior and remaining work.
 
 ## Research used for the initial technology choice
 
@@ -215,3 +215,14 @@ Open **Automation** (`/Automation`). With one-time mailbox processing permission
 Prepared complaints are kept in an encrypted owner/workspace-bound queue. **Review prepared complaint** opens populated fields and the preserved original; correct exceptions, then **Approve and register**. Missing district/location or uncertain routing requires a check. Approval reuses the prepared draft and atomically registers a single local case; it does not call AI again or automatically close cases. Permission is bound to the configured mailbox. **Pause automation** preserves work and stops subsequent processing steps.
 
 The **social feed demo** prepares three explicitly fictional X/Facebook/Instagram posts through that same queue. No social platform is contacted; live collection and reply posting still need separate integration work and platform access. Repeated demo runs reuse source IDs, and approved demo cases are marked Sample. See [the automation implementation and verification report](output/Praja_Automation_Update_2026-10-15.txt).
+
+
+## Offline photo and voice capture
+
+Open `/offline.html` once while connected, then use the same browser on your own device. Enter the district and locality, type a complaint or record up to two minutes of audio, optionally choose an incident photo, and confirm the relevant permissions. Choose **Save and queue complaint** before closing the page. Unsaved microphone recordings are not protected against closing the tab.
+
+The queue stores media in IndexedDB, with at most 20 records, 8 MiB per file and 50 MiB of combined media. Supported photos are JPEG/PNG; audio is WAV, MP3, WebM or Ogg. Browser storage can be cleared or evicted, so this is not a backup. Local copies are accessible to other people using that browser profile.
+
+Reopen the page after reconnecting. Text/photo complaints sync automatically while the page is open. Voice recordings use the configured speech service after reconnecting; no new provider is needed, but transcription cannot run without a working speech configuration. Review and correct the transcript, then choose **Transcript is correct — send complaint**. Audio is used for transcription, not retained as case evidence. Incident photos are retained through the existing protected evidence service.
+
+A returned reference and private tracking code confirm registration. Failed requests retain the local media and stable submission key for retry. Confirmed receipts remove local photo/audio blobs. Sync does not run with the page closed. Offline GPS capture is not part of this delivery; use the online form for device coordinates.

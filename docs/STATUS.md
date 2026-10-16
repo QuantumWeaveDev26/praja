@@ -7,7 +7,7 @@ integration or production acceptance certificate.
 
 - Citizen text and voice intake, incident photos and permission-based location
   capture; private tracking codes and citizen approval or dispute.
-- Offline text capture with later synchronisation and duplicate protection.
+- Offline text, incident photo and voice capture with bounded device storage, later synchronisation and duplicate protection. Voice is transcribed after reconnecting and requires citizen review before registration.
 - AI-assisted extraction and drafting, local routing fallback, PDF text extraction
   and image/audio connectors. Accuracy needs representative evaluation.
 - Gmail Inbox collection, complaint detection and prepared drafts; manual/CSV
@@ -34,7 +34,7 @@ integration or production acceptance certificate.
 
 1. Representative complaint-detection evaluation and clearer handling of uncertain
    or missed intake messages.
-2. Offline photo/audio storage and reliable media synchronisation.
+2. Real-device offline media, microphone and storage eviction testing across target phones.
 3. Scanned-PDF processing and multilingual/media evaluation tooling and fixtures.
 4. Recurrence/department-performance analytics and duplicate/paraphrase review.
 5. Backup/restore drills, retention controls, accessibility, real-device testing,
