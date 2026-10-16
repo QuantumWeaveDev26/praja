@@ -145,12 +145,20 @@ public class PublicSourceTests
         await scope.ServiceProvider.GetRequiredService<AutomationService>().RunAsync(owner.Id); Assert.Empty(automation.Read(owner.Id).Prepared);
         automation.Update(owner.Id, s => s with { Enabled = false });
         var path = "/Grievances/New?InboxId=" + item.Id;
+        var reviewHtml = await client.GetStringAsync(path);
+        Assert.Contains("I am authorised to retain and review this public report", reviewHtml);
+        Assert.DoesNotContain("I confirm that the citizen agreed", reviewHtml);
+        Assert.DoesNotContain("Need more details? Ask the citizen", reviewHtml);
+        Assert.True(reviewHtml.IndexOf("This is a public report for review", StringComparison.Ordinal) < reviewHtml.IndexOf("class=\"intake-grid\"", StringComparison.Ordinal));
+        Assert.Matches("class=\"intake-grid\">\\s*<section class=\"panel form-panel\">", reviewHtml);
         var fields = new Dictionary<string, string> { ["InboxId"] = item.Id.ToString(), ["InboxVersion"] = item.Version.ToString(), ["Input.OriginalText"] = item.OriginalText,
             ["Input.Language"] = "English", ["Input.Source"] = item.Channel, ["Input.District"] = "Bengaluru Urban", ["Input.Location"] = "Ward 12", ["Input.Consent"] = "true", ["__RequestVerificationToken"] = Csrf(await client.GetStringAsync(path)) };
         var analysis = await client.PostAsync(path + "&handler=Analyze", new FormUrlEncodedContent(fields)); Assert.Contains("Local keyword", await analysis.Content.ReadAsStringAsync());
         fields["__RequestVerificationToken"] = Csrf(await analysis.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync(path, new FormUrlEncodedContent(fields))).StatusCode);
-        var saved = await db.Grievances.SingleAsync(); Assert.Equal("Draft", saved.Status); Assert.Equal(item.Channel, saved.Source);
+        var saved = await db.Grievances.Include(g => g.History).SingleAsync(); Assert.Equal("Draft", saved.Status); Assert.Equal(item.Channel, saved.Source);
+        Assert.Contains(saved.History, h => h.Action.Contains("Citizen consent or direct submission was not recorded"));
+        Assert.DoesNotContain(saved.History, h => h.Action == "Original complaint recorded with consent; draft prepared for officer review.");
         await Assert.ThrowsAsync<InvalidOperationException>(() => scope.ServiceProvider.GetRequiredService<CaseBriefService>().BuildAsync(saved.Id, owner.Id, saved.Version, [], true, true));
         Assert.Single(handler.Requests);
     }

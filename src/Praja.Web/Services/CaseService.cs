@@ -17,9 +17,16 @@ public class CaseService(WorkspaceDb db, DraftingService drafts)
             ?? throw new InvalidOperationException("Inbox item not found.");
         if (source.State != "Pending" || source.Version != version) throw new InvalidOperationException("This inbox item changed or was already processed. Reload it before preparing a draft.");
         if (source.OriginalText != original.Trim()) throw new InvalidOperationException("The inbox original is preserved. Review its draft instead of replacing source text.");
+        if (PublicSourceCollection.UsesLocalReview(source.CapturedBy) && !consent)
+            throw new InvalidOperationException("Confirm permission to retain and review this public report.");
         if (PublicSourceCollection.UsesLocalReview(source.CapturedBy))
             preparedDraft = DraftingService.Template(source.OriginalText, language, district, location, "Local template · public source retained for review");
         var item = await PrepareAsync(owner, actor, source.OriginalText, language, district, location, source.Channel, consent, cancellation, intakeRoute, followUp, preparedDraft);
+        if (PublicSourceCollection.UsesLocalReview(source.CapturedBy))
+        {
+            var capture = item.History.First(h => h.Action == "Original complaint recorded with consent; draft prepared for officer review.");
+            capture.Action = "Public-source report retained with officer review permission; draft prepared for verification. Citizen consent or direct submission was not recorded.";
+        }
         item.IsSample = InboxImportService.IsDemoSample(source);
         if (item.IsSample) item.History.Add(new() { Actor = actor, Action = "Fictional channel-import sample preserved as a sample case; normal analytics excludes samples by default." });
         item.History.Add(new() {Actor = actor, Action = $"Original retained from inbox item {source.Id}; source channel and references remain available in the intake inbox."});
